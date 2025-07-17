@@ -4,7 +4,7 @@ LDLIBS = $(shell pkg-config --libs libpipewire-0.3 libspa-0.2) -lm
 
 all: multichannel_player
 
-multichannel_player: multichannel_player.c
+multichannel_player: src/multichannel_player.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 clean:

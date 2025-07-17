@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy the source code and build files
-COPY multichannel_player.c /app/
+COPY src/multichannel_player.c /app/
 COPY Makefile /app/
 
 # Show the modified Makefile for debugging
