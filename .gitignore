@@ -1,0 +1,27 @@
+# Compiled binary
+multichannel_player
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# Audio files
+*.pcm
+*.raw
+*.wav
+*.mp3
+audio_files/
+
+# Docker
+.docker/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
