@@ -7,6 +7,7 @@
 #include <spa/pod/builder.h>
 #include "track_manager.h"
 #include "log.h"
+#include "mqtt_client.h"
 
 #define MAX_TRACKS 32
 #define BUFFER_SIZE 4096
@@ -261,6 +262,12 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
     track->state = TRACK_STATE_PLAYING;
     ctx->active_tracks++;
     log_info("Started playback of track: %s", track_id);
+
+    // Publish MQTT status if enabled
+    if (ctx->config->mqtt_ctx) {
+        mqtt_client_publish_status(ctx->config->mqtt_ctx, track_id, true);
+    }
+
     return true;
 }
 
@@ -289,6 +296,11 @@ bool track_manager_stop(track_manager_ctx_t *ctx, const char *track_id) {
                         sizeof(track_instance_t) * (ctx->active_tracks - i - 1));
             }
             ctx->active_tracks--;
+
+            // Publish MQTT status if enabled
+            if (ctx->config->mqtt_ctx) {
+                mqtt_client_publish_status(ctx->config->mqtt_ctx, track_id, false);
+            }
 
             log_info("Stopped track: %s", track_id);
             return true;

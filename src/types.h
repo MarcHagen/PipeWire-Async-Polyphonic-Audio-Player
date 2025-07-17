@@ -39,6 +39,8 @@ typedef struct {
     pthread_t thread;          // Playback thread
 } track_instance_t;
 
+struct mqtt_client_ctx;  // Forward declaration
+
 // Global configuration
 typedef struct {
     struct {
@@ -60,6 +62,7 @@ typedef struct {
 
     track_config_t *tracks;
     int track_count;
+    struct mqtt_client_ctx *mqtt_ctx;  // MQTT context for status updates
 } global_config_t;
 
 #endif // ASYNC_AUDIO_PLAYER_TYPES_H

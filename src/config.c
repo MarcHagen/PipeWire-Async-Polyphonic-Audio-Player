@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "config.h"
 #include "log.h"
+#include "mqtt_client.h"
 
 static void parse_logging(yaml_document_t *doc, yaml_node_t *node, global_config_t *config) {
     if (node->type != YAML_MAPPING_NODE) return;
@@ -160,6 +161,10 @@ void config_free(global_config_t *config) {
     free(config->logging.level);
 
     // Free MQTT config
+    if (config->mqtt_ctx) {
+        mqtt_client_cleanup(config->mqtt_ctx);
+        config->mqtt_ctx = NULL;
+    }
     free(config->mqtt.broker);
     free(config->mqtt.client_id);
     free(config->mqtt.username);
