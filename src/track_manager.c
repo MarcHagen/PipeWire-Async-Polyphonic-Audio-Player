@@ -269,8 +269,19 @@ bool track_manager_stop(track_manager_ctx_t *ctx, const char *track_id) {
 
     for (int i = 0; i < ctx->active_tracks; i++) {
         if (strcmp(ctx->tracks[i].config->id, track_id) == 0) {
-            // TODO: Stop playback thread
-            // TODO: Cleanup resources
+            track_instance_t *track = &ctx->tracks[i];
+
+            // Destroy PipeWire stream
+            if (track->stream) {
+                pw_stream_destroy(track->stream);
+                track->stream = NULL;
+            }
+
+            // Close audio file if it exists
+            if (track->audio_file) {
+                audio_file_close(track->audio_file);
+                track->audio_file = NULL;
+            }
 
             // Remove track from active tracks
             if (i < ctx->active_tracks - 1) {
@@ -338,10 +349,155 @@ void track_manager_print_status(track_manager_ctx_t *ctx) {
     }
 }
 
+// Test tone configuration
+static const track_config_t TEST_TONE_CONFIG = {
+    .id = "test_tone",
+    .loop = true,
+    .volume = 0.5f,
+    .output = {
+        .device = "default",
+        .mapping = (char *[]){"AUX0", "AUX1"},
+        .mapping_count = 2
+    }
+};
+
+static void generate_test_tone(float *buffer, size_t frames, int channels, int sample_rate) {
+    static float phase = 0.0f;
+    const float frequency = 440.0f; // A4 note
+    const float increment = 2.0f * M_PI * frequency / sample_rate;
+
+    for (size_t i = 0; i < frames; i++) {
+        float sample = sinf(phase) * 0.5f; // 50% amplitude
+        for (int ch = 0; ch < channels; ch++) {
+            buffer[i * channels + ch] = sample;
+        }
+        phase += increment;
+        if (phase >= 2.0f * M_PI) {
+            phase -= 2.0f * M_PI;
+        }
+    }
+}
+
+static void on_test_tone_process(void *userdata) {
+    track_instance_t *track = userdata;
+    struct pw_buffer *b;
+    struct spa_buffer *buf;
+    float *dst;
+
+    if ((b = pw_stream_dequeue_buffer(track->stream)) == NULL) {
+        log_error("Out of buffers");
+        return;
+    }
+
+    buf = b->buffer;
+    dst = buf->datas[0].data;
+    if (dst == NULL)
+        return;
+
+    size_t n_frames = buf->datas[0].maxsize / sizeof(float) / track->config->output.mapping_count;
+
+    // Generate test tone
+    generate_test_tone(dst, n_frames, track->config->output.mapping_count, 48000);
+
+    buf->datas[0].chunk->offset = 0;
+    buf->datas[0].chunk->stride = track->config->output.mapping_count * sizeof(float);
+    buf->datas[0].chunk->size = n_frames * track->config->output.mapping_count * sizeof(float);
+
+    pw_stream_queue_buffer(track->stream, b);
+}
+
 bool track_manager_play_test_tone(track_manager_ctx_t *ctx) {
     if (!ctx) return false;
 
-    // TODO: Implement test tone
-    log_info("Test tone not implemented yet");
-    return false;
+    // Stop any existing test tone
+    track_manager_stop(ctx, TEST_TONE_CONFIG.id);
+
+    // Initialize new track instance
+    if (ctx->active_tracks >= MAX_TRACKS) {
+        log_error("Maximum number of active tracks reached");
+        return false;
+    }
+
+    track_instance_t *track = &ctx->tracks[ctx->active_tracks];
+    memset(track, 0, sizeof(track_instance_t));
+    track->config = (track_config_t *)&TEST_TONE_CONFIG;
+    track->state = TRACK_STATE_STOPPED;
+
+    // Set up PipeWire stream
+    struct pw_properties *props = pw_properties_new(
+        PW_KEY_MEDIA_TYPE, "Audio",
+        PW_KEY_MEDIA_CATEGORY, "Playback",
+        PW_KEY_MEDIA_ROLE, "Test",
+        PW_KEY_NODE_NAME, "test_tone",
+        PW_KEY_NODE_DESCRIPTION, "Test Tone Generator",
+        NULL);
+
+    if (!props) {
+        log_error("Failed to create stream properties");
+        return false;
+    }
+
+    // Set up channel mapping
+    char channelnames[1024] = "";
+    for (int i = 0; i < track->config->output.mapping_count; i++) {
+        if (i > 0) strcat(channelnames, ",");
+        strcat(channelnames, track->config->output.mapping[i]);
+    }
+    pw_properties_set(props, PW_KEY_NODE_CHANNELNAMES, channelnames);
+
+    // Create stream with test tone process callback
+    struct pw_stream_events test_events = stream_events;
+    test_events.process = on_test_tone_process;
+
+    track->stream = pw_stream_new_simple(
+        pw_main_loop_get_loop(ctx->pw_loop),
+        "test_tone",
+        props,
+        &test_events,
+        track);
+
+    if (!track->stream) {
+        log_error("Failed to create test tone stream");
+        pw_properties_free(props);
+        return false;
+    }
+
+    // Set up stream parameters
+    uint8_t buffer[1024];
+    struct spa_pod_builder b;
+    spa_pod_builder_init(&b, buffer, sizeof(buffer));
+
+    struct spa_audio_info_raw audio_info = {
+        .format = SPA_AUDIO_FORMAT_F32,
+        .channels = track->config->output.mapping_count,
+        .rate = 48000
+    };
+
+    // Set channel positions
+    for (uint8_t i = 0; i < audio_info.channels && i < SPA_AUDIO_MAX_CHANNELS; i++) {
+        audio_info.position[i] = SPA_AUDIO_CHANNEL_AUX0 + i;
+    }
+
+    const struct spa_pod *params[1];
+    params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &audio_info);
+
+    if (pw_stream_connect(track->stream,
+                         PW_DIRECTION_OUTPUT,
+                         PW_ID_ANY,
+                         PW_STREAM_FLAG_AUTOCONNECT |
+                         PW_STREAM_FLAG_MAP_BUFFERS |
+                         PW_STREAM_FLAG_RT_PROCESS,
+                         params, 1) < 0) {
+        log_error("Failed to connect test tone stream");
+        pw_stream_destroy(track->stream);
+        pw_properties_free(props);
+        return false;
+    }
+
+    track->state = TRACK_STATE_PLAYING;
+    ctx->active_tracks++;
+    log_info("Started test tone playback");
+
+    pw_properties_free(props);
+    return true;
 }
