@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 -g -I./src $(shell pkg-config --cflags libpipewire-0.3 libspa-0.2 yaml-0.1)
-LDFLAGS = $(shell pkg-config --libs libpipewire-0.3 libspa-0.2 yaml-0.1) -lpthread -lm
+CFLAGS = -Wall -Wextra -O2 -g -I./src $(shell pkg-config --cflags libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile)
+LDFLAGS = $(shell pkg-config --libs libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile) -lpthread -lm
 
 SRC_DIR = src
 OBJ_DIR = obj

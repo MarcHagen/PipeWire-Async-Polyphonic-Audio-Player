@@ -1,6 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <pipewire/pipewire.h>
+#include <spa/param/audio/format-utils.h>
+#include <spa/param/props.h>
+#include <spa/pod/builder.h>
 #include "track_manager.h"
 #include "log.h"
 
@@ -33,13 +37,25 @@ static void on_process(void *userdata) {
     if (dst == NULL)
         return;
 
-    // TODO: Implement actual audio data processing
-    // For now, just fill with silence
-    memset(dst, 0, BUFFER_SIZE * sizeof(float));
+    size_t n_frames = buf->datas[0].maxsize / sizeof(float) / track->audio_file->info.channels;
+
+    // Read audio data
+    size_t frames_read = audio_file_read(track->audio_file, dst, n_frames);
+
+    if (frames_read < n_frames) {
+        if (!track->audio_file->loop) {
+            // End of file reached and not looping
+            track->state = TRACK_STATE_STOPPED;
+            log_info("Track finished: %s", track->config->id);
+        }
+        // Fill remaining buffer with silence
+        memset(dst + (frames_read * track->audio_file->info.channels), 0,
+               (n_frames - frames_read) * track->audio_file->info.channels * sizeof(float));
+    }
 
     buf->datas[0].chunk->offset = 0;
-    buf->datas[0].chunk->stride = sizeof(float);
-    buf->datas[0].chunk->size = BUFFER_SIZE * sizeof(float);
+    buf->datas[0].chunk->stride = track->audio_file->info.channels * sizeof(float);
+    buf->datas[0].chunk->size = n_frames * track->audio_file->info.channels * sizeof(float);
 
     pw_stream_queue_buffer(track->stream, b);
 }
@@ -169,14 +185,48 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
     track->config = config;
     track->state = TRACK_STATE_STOPPED;
 
-    if (!init_track_pipewire(ctx, track)) {
-        log_error("Failed to initialize PipeWire for track: %s", track_id);
+    // Open audio file
+    track->audio_file = audio_file_open(config->file_path, config->loop, config->volume);
+    if (!track->audio_file) {
+        log_error("Failed to open audio file: %s", config->file_path);
         return false;
     }
 
-    // TODO: Initialize audio file
-    // TODO: Start playback thread
+    // Initialize PipeWire
+    if (!init_track_pipewire(ctx, track)) {
+        log_error("Failed to initialize PipeWire for track: %s", track_id);
+        audio_file_close(track->audio_file);
+        return false;
+    }
 
+    // Set up stream parameters
+    uint8_t buffer[1024];
+    struct spa_pod_builder b;
+    spa_pod_builder_init(&b, buffer, sizeof(buffer));
+
+    struct spa_audio_info_raw audio_info = {
+        .format = SPA_AUDIO_FORMAT_F32,
+        .channels = track->audio_file->info.channels,
+        .rate = track->audio_file->info.samplerate
+    };
+
+    const struct spa_pod *params[1];
+    params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &audio_info);
+
+    if (pw_stream_connect(track->stream,
+                         PW_DIRECTION_OUTPUT,
+                         PW_ID_ANY,
+                         PW_STREAM_FLAG_AUTOCONNECT |
+                         PW_STREAM_FLAG_MAP_BUFFERS |
+                         PW_STREAM_FLAG_RT_PROCESS,
+                         params, 1) < 0) {
+        log_error("Failed to connect stream");
+        pw_stream_destroy(track->stream);
+        audio_file_close(track->audio_file);
+        return false;
+    }
+
+    track->state = TRACK_STATE_PLAYING;
     ctx->active_tracks++;
     log_info("Started playback of track: %s", track_id);
     return true;

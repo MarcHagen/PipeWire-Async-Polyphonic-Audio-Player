@@ -27,13 +27,14 @@ typedef struct {
     output_config_t output;
 } track_config_t;
 
+#include "audio_file.h"
+
 // Active track instance
 typedef struct {
     track_config_t *config;
     track_state_t state;
     struct pw_stream *stream;    // Pipewire stream
-    void *buffer;               // Audio buffer
-    size_t buffer_size;
+    audio_file_t *audio_file;   // Audio file handler
     bool should_stop;          // Flag for graceful shutdown
     pthread_t thread;          // Playback thread
 } track_instance_t;
