@@ -14,6 +14,8 @@ void log_set_level(const char *level) {
         current_level = LOG_DEBUG;
     } else if (strcasecmp(level, "INFO") == 0) {
         current_level = LOG_INFO;
+    } else if (strcasecmp(level, "WARN") == 0) {
+        current_level = LOG_WARN;
     } else if (strcasecmp(level, "ERROR") == 0) {
         current_level = LOG_ERROR;
     }
@@ -42,6 +44,13 @@ void log_error(const char *format, ...) {
     va_list args;
     va_start(args, format);
     log_print(LOG_ERROR, "ERROR", format, args);
+    va_end(args);
+}
+
+void log_warn(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    log_print(LOG_WARN, "WARN", format, args);
     va_end(args);
 }
 

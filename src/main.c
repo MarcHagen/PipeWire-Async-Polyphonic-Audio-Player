@@ -6,12 +6,14 @@
 #include "log.h"
 #include "config.h"
 #include "cli.h"
+#include "track_manager.h"
 
 #define DEFAULT_CONFIG_PATH "/etc/async-audio-player/config.yml"
 
 // Global state
 static bool g_running = true;
 static global_config_t *g_config = NULL;
+static track_manager_ctx_t *g_track_manager = NULL;
 
 // Signal handler
 static void signal_handler(int signo) {
@@ -71,49 +73,79 @@ int main(int argc, char *argv[]) {
         log_set_level(g_config->logging.level);
     }
 
+    // Initialize track manager
+    g_track_manager = track_manager_init(g_config);
+    if (!g_track_manager) {
+        log_error("Failed to initialize track manager");
+        config_free(g_config);
+        return EXIT_FAILURE;
+    }
+
     // TODO: Initialize MQTT
-    // TODO: Initialize audio system
 
     log_info("Initialization complete");
 
     // Handle CLI commands
     switch (args.command) {
+        case CMD_NONE:
+            // No command specified, just run in daemon mode
+            break;
+        case CMD_HELP:
+            cli_print_help(argv[0]);
+            return EXIT_SUCCESS;
         case CMD_LIST:
-            // TODO: Implement list tracks
+            track_manager_list_tracks(g_track_manager);
             break;
         case CMD_PLAY:
             if (args.track_id) {
-                // TODO: Implement play track
-                log_info("Playing track: %s", args.track_id);
+                if (!track_manager_play(g_track_manager, args.track_id)) {
+                    log_error("Failed to play track: %s", args.track_id);
+                }
             }
             break;
         case CMD_STOP:
             if (args.track_id) {
-                // TODO: Implement stop track
-                log_info("Stopping track: %s", args.track_id);
+                if (!track_manager_stop(g_track_manager, args.track_id)) {
+                    log_error("Failed to stop track: %s", args.track_id);
+                }
             }
             break;
         case CMD_STOPALL:
-            // TODO: Implement stop all tracks
-            log_info("Stopping all tracks");
+            if (!track_manager_stop_all(g_track_manager)) {
+                log_error("Failed to stop all tracks");
+            }
             break;
         case CMD_RELOAD:
-            // TODO: Implement configuration reload
-            log_info("Reloading configuration");
+            global_config_t *new_config = config_reload(DEFAULT_CONFIG_PATH);
+            if (new_config) {
+                track_manager_stop_all(g_track_manager);
+                track_manager_cleanup(g_track_manager);
+                config_free(g_config);
+                g_config = new_config;
+                g_track_manager = track_manager_init(g_config);
+                if (!g_track_manager) {
+                    log_error("Failed to reinitialize track manager");
+                    config_free(g_config);
+                    return EXIT_FAILURE;
+                }
+                log_info("Configuration reloaded successfully");
+            } else {
+                log_error("Failed to reload configuration");
+            }
             break;
         case CMD_STATUS:
-            // TODO: Implement status display
-            log_info("Displaying status");
+            track_manager_print_status(g_track_manager);
             break;
         case CMD_TEST:
-            // TODO: Implement test tone
-            log_info("Playing test tone");
+            if (!track_manager_play_test_tone(g_track_manager)) {
+                log_error("Failed to play test tone");
+            }
             break;
     }
 
     // Main loop
     while (g_running) {
-        // TODO: Process messages and maintain state
+        // TODO: Process MQTT messages
         usleep(100000); // 100ms sleep to prevent busy loop
     }
 
@@ -121,6 +153,9 @@ int main(int argc, char *argv[]) {
     log_info("Shutting down...");
     if (args.track_id) {
         free(args.track_id);
+    }
+    if (g_track_manager) {
+        track_manager_cleanup(g_track_manager);
     }
     if (g_config) {
         config_free(g_config);

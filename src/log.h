@@ -6,6 +6,7 @@
 typedef enum {
     LOG_ERROR,
     LOG_INFO,
+    LOG_WARN,
     LOG_DEBUG
 } log_level_t;
 
@@ -14,6 +15,7 @@ void log_set_level(const char *level);
 
 // Log functions
 void log_error(const char *format, ...);
+void log_warn(const char *format, ...);
 void log_info(const char *format, ...);
 void log_debug(const char *format, ...);
 
