@@ -12,25 +12,25 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Fix for Ubuntu 22.04 package structure */
 #ifdef __has_include
   #if __has_include(<spa-0.2/spa/param/audio/format-utils.h>)
     #include <spa-0.2/spa/param/audio/format-utils.h>
     #include <spa-0.2/spa/param/props.h>
     #include <spa-0.2/spa/utils/string.h>
-  #else
-    #include <spa/param/audio/format-utils.h>
-    #include <spa/param/props.h>
-    #include <spa/utils/string.h>
   #endif
 #else
-  /* Fallback to standard paths */
   #include <spa/param/audio/format-utils.h>
   #include <spa/param/props.h>
   #include <spa/utils/string.h>
 #endif
 
-#include <pipewire/pipewire.h>
+#ifdef __has_include
+  #if __has_include(<pipewire-0.3/pipewire/pipewire.h>)
+    #include <pipewire-0.3/pipewire/pipewire.h>
+  #endif
+#else
+  #include <pipewire/pipewire.h>
+#endif
 
 #define CHANNELS    12
 #define RATE        48000
@@ -116,8 +116,7 @@ static void on_process(void *userdata)
     pw_stream_queue_buffer(d->stream, b);
 }
 
-static void on_stream_state_changed(void *userdata, enum pw_stream_state old,
-                                  enum pw_stream_state state, const char *error)
+static void on_stream_state_changed(void *userdata, enum pw_stream_state old, enum pw_stream_state state, const char *error)
 {
     struct data *d = userdata;
 
