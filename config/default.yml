@@ -1,0 +1,38 @@
+---
+# Default configuration for async-multichannel-audio-player
+
+logging:
+  level: INFO
+
+mqtt:
+  enabled: false
+  broker: "tcp://localhost:1883"
+  client_id: "async-audio-player"
+  username: ""
+  password: ""
+  topic_prefix: "async-audio-player"
+
+audio:
+  sample_rate: 48000
+
+# Example tracks configuration
+tracks:
+  - id: "test1"
+    file_path: "/tmp/test.wav"
+    loop: false
+    output:
+      device: "default"
+      mapping:
+        - "AUX0"
+        - "AUX1"
+    volume: 1.0
+
+  - id: "test2"
+    file_path: "/tmp/test.wav"
+    loop: true
+    output:
+      device: "default"
+      mapping:
+        - "AUX2"
+        - "AUX3"
+    volume: 1.0

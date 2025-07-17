@@ -56,13 +56,13 @@ static void parse_track_output(yaml_document_t *doc, yaml_node_t *node, output_c
             // Parse mapping array
             if (value->type == YAML_SEQUENCE_NODE) {
                 output->mapping_count = value->data.sequence.items.top - value->data.sequence.items.start;
-                output->mapping = malloc(sizeof(int) * output->mapping_count);
+                output->mapping = malloc(sizeof(char *) * output->mapping_count);
 
                 yaml_node_item_t *item;
                 int i = 0;
                 for (item = value->data.sequence.items.start; item < value->data.sequence.items.top; item++) {
                     yaml_node_t *map_value = yaml_document_get_node(doc, *item);
-                    output->mapping[i++] = atoi((char *)map_value->data.scalar.value);
+                    output->mapping[i++] = strdup((char *)map_value->data.scalar.value);
                 }
             }
         }
@@ -172,6 +172,11 @@ void config_free(global_config_t *config) {
         free(track->id);
         free(track->file_path);
         free(track->output.device);
+
+        // Free each mapping string
+        for (int j = 0; j < track->output.mapping_count; j++) {
+            free(track->output.mapping[j]);
+        }
         free(track->output.mapping);
     }
     free(config->tracks);

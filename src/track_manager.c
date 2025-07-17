@@ -69,15 +69,37 @@ static const struct pw_stream_events stream_events = {
 static bool init_track_pipewire(track_manager_ctx_t *ctx, track_instance_t *track) {
     struct pw_properties *props;
 
+    char channelnames[1024] = "";
+    if (track->config->output.mapping_count > 0) {
+        for (int i = 0; i < track->config->output.mapping_count; i++) {
+            if (i > 0) strcat(channelnames, ",");
+            strcat(channelnames, track->config->output.mapping[i]);
+        }
+    }
+
     props = pw_properties_new(
         PW_KEY_MEDIA_TYPE, "Audio",
         PW_KEY_MEDIA_CATEGORY, "Playback",
         PW_KEY_MEDIA_ROLE, "Music",
+        PW_KEY_NODE_NAME, track->config->id,
+        PW_KEY_NODE_DESCRIPTION, track->config->id,
         NULL);
 
     if (!props) {
         log_error("Failed to create stream properties");
         return false;
+    }
+
+    // Add device target if specified
+    if (track->config->output.device) {
+        pw_properties_set(props, PW_KEY_TARGET_OBJECT, track->config->output.device);
+    }
+
+    // Add channel mapping if specified
+    if (track->config->output.mapping_count > 0) {
+        pw_properties_set(props, PW_KEY_NODE_CHANNELNAMES, channelnames);
+        pw_properties_set(props, PW_KEY_MEDIA_TYPE, "Audio");
+        pw_properties_setf(props, PW_KEY_AUDIO_CHANNELS, "%d", track->config->output.mapping_count);
     }
 
     track->stream = pw_stream_new_simple(
@@ -93,6 +115,7 @@ static bool init_track_pipewire(track_manager_ctx_t *ctx, track_instance_t *trac
         return false;
     }
 
+    pw_properties_free(props);
     return true;
 }
 
@@ -206,9 +229,18 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
 
     struct spa_audio_info_raw audio_info = {
         .format = SPA_AUDIO_FORMAT_F32,
-        .channels = track->audio_file->info.channels,
+        .channels = track->config->output.mapping_count > 0 ? 
+                   track->config->output.mapping_count : 
+                   track->audio_file->info.channels,
         .rate = track->audio_file->info.samplerate
     };
+
+    // Set channel positions
+    if (track->config->output.mapping_count > 0) {
+        for (uint8_t i = 0; i < audio_info.channels && i < SPA_AUDIO_MAX_CHANNELS; i++) {
+            audio_info.position[i] = SPA_AUDIO_CHANNEL_AUX0 + i;
+        }
+    }
 
     const struct spa_pod *params[1];
     params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &audio_info);

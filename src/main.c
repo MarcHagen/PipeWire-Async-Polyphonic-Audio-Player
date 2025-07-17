@@ -8,7 +8,23 @@
 #include "cli.h"
 #include "track_manager.h"
 
-#define DEFAULT_CONFIG_PATH "/etc/async-audio-player/config.yml"
+// Configuration file search paths
+static const char *CONFIG_PATHS[] = {
+    "./config/default.yml",
+    "./default.yml",
+    "/etc/async-audio-player/config.yml",
+    NULL
+};
+
+// Find existing configuration file
+static const char* find_config_file(void) {
+    for (const char **path = CONFIG_PATHS; *path != NULL; path++) {
+        if (access(*path, R_OK) == 0) {
+            return *path;
+        }
+    }
+    return NULL;
+}
 
 // Global state
 static bool g_running = true;
@@ -61,8 +77,18 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    // Load configuration
-    g_config = config_load(DEFAULT_CONFIG_PATH);
+    // Find and load configuration
+    const char *config_path = find_config_file();
+    if (!config_path) {
+        log_error("No configuration file found. Searched in:");
+        for (const char **path = CONFIG_PATHS; *path != NULL; path++) {
+            log_error("  %s", *path);
+        }
+        return EXIT_FAILURE;
+    }
+
+    log_info("Using configuration file: %s", config_path);
+    g_config = config_load(config_path);
     if (!g_config) {
         log_error("Failed to load configuration");
         return EXIT_FAILURE;
@@ -116,21 +142,29 @@ int main(int argc, char *argv[]) {
             }
             break;
         case CMD_RELOAD:
-            global_config_t *new_config = config_reload(DEFAULT_CONFIG_PATH);
-            if (new_config) {
-                track_manager_stop_all(g_track_manager);
-                track_manager_cleanup(g_track_manager);
-                config_free(g_config);
-                g_config = new_config;
-                g_track_manager = track_manager_init(g_config);
-                if (!g_track_manager) {
-                    log_error("Failed to reinitialize track manager");
-                    config_free(g_config);
-                    return EXIT_FAILURE;
+            {
+                const char *reload_path = find_config_file();
+                if (!reload_path) {
+                    log_error("Configuration file not found for reload");
+                    break;
                 }
-                log_info("Configuration reloaded successfully");
-            } else {
-                log_error("Failed to reload configuration");
+
+                global_config_t *new_config = config_reload(reload_path);
+                if (new_config) {
+                    track_manager_stop_all(g_track_manager);
+                    track_manager_cleanup(g_track_manager);
+                    config_free(g_config);
+                    g_config = new_config;
+                    g_track_manager = track_manager_init(g_config);
+                    if (!g_track_manager) {
+                        log_error("Failed to reinitialize track manager");
+                        config_free(g_config);
+                        return EXIT_FAILURE;
+                    }
+                    log_info("Configuration reloaded successfully");
+                } else {
+                    log_error("Failed to reload configuration");
+                }
             }
             break;
         case CMD_STATUS:

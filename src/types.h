@@ -14,7 +14,7 @@ typedef enum {
 // Output mapping configuration
 typedef struct {
     char *device;
-    int *mapping;        // Array of AUX channel numbers
+    char **mapping;      // Array of port names (e.g., "AUX0", "AUX1", etc.)
     int mapping_count;   // Number of channels in mapping
 } output_config_t;
 
