@@ -61,9 +61,61 @@ static void on_process(void *userdata) {
     pw_stream_queue_buffer(track->stream, b);
 }
 
+static void on_stream_state_changed(void *userdata, enum pw_stream_state old, enum pw_stream_state state, const char *error)
+{
+    track_instance_t *track = userdata;
+
+    log_debug("Stream state changed from %s to %s", 
+              pw_stream_state_as_string(old),
+              pw_stream_state_as_string(state));
+
+    switch (state) {
+        case PW_STREAM_STATE_ERROR:
+            track->state = TRACK_STATE_ERROR;
+            if (track->error.message) {
+                free(track->error.message);
+            }
+            track->error.message = error ? strdup(error) : strdup("Unknown error");
+            log_error("Stream error: %s", track->error.message);
+            break;
+
+        case PW_STREAM_STATE_CONNECTING:
+            track->state = TRACK_STATE_CONNECTING;
+            break;
+
+        case PW_STREAM_STATE_PAUSED:
+            if (track->state == TRACK_STATE_PLAYING) {
+                log_info("Stream paused: %s", track->config->id);
+            }
+            break;
+
+        case PW_STREAM_STATE_STREAMING:
+            if (old != PW_STREAM_STATE_STREAMING) {
+                track->is_connected = true;
+                log_info("Stream started: %s", track->config->id);
+                if (track->state != TRACK_STATE_PLAYING) {
+                    track->state = TRACK_STATE_PLAYING;
+                }
+            }
+            break;
+
+        case PW_STREAM_STATE_UNCONNECTED:
+            track->is_connected = false;
+            if (track->state == TRACK_STATE_PLAYING) {
+                track->state = TRACK_STATE_DISCONNECTED;
+                log_warn("Stream disconnected: %s", track->config->id);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
 static const struct pw_stream_events stream_events = {
     PW_VERSION_STREAM_EVENTS,
     .process = on_process,
+    .state_changed = on_stream_state_changed,
 };
 
 // Initialize PipeWire for a track
@@ -208,6 +260,9 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
     memset(track, 0, sizeof(track_instance_t));
     track->config = config;
     track->state = TRACK_STATE_STOPPED;
+    track->is_connected = false;
+    track->error.message = NULL;
+    track->error.code = 0;
 
     // Open audio file
     track->audio_file = audio_file_open(config->file_path, config->loop, config->volume);
@@ -277,6 +332,12 @@ bool track_manager_stop(track_manager_ctx_t *ctx, const char *track_id) {
     for (int i = 0; i < ctx->active_tracks; i++) {
         if (strcmp(ctx->tracks[i].config->id, track_id) == 0) {
             track_instance_t *track = &ctx->tracks[i];
+
+            // Clean up error message if any
+            if (track->error.message) {
+                free(track->error.message);
+                track->error.message = NULL;
+            }
 
             // Destroy PipeWire stream
             if (track->stream) {
@@ -355,9 +416,32 @@ void track_manager_print_status(track_manager_ctx_t *ctx) {
     printf("Active tracks: %d/%d\n", ctx->active_tracks, MAX_TRACKS);
     for (int i = 0; i < ctx->active_tracks; i++) {
         track_instance_t *track = &ctx->tracks[i];
-        printf("  %s: %s\n", track->config->id,
-               track->state == TRACK_STATE_PLAYING ? "playing" :
-               track->state == TRACK_STATE_STOPPED ? "stopped" : "error");
+        const char *state_str;
+        switch (track->state) {
+            case TRACK_STATE_PLAYING:
+                state_str = "playing";
+                break;
+            case TRACK_STATE_STOPPED:
+                state_str = "stopped";
+                break;
+            case TRACK_STATE_ERROR:
+                state_str = track->error.message ? track->error.message : "error";
+                break;
+            case TRACK_STATE_CONNECTING:
+                state_str = "connecting";
+                break;
+            case TRACK_STATE_DISCONNECTED:
+                state_str = "disconnected";
+                break;
+            default:
+                state_str = "unknown";
+                break;
+        }
+        printf("  %s: %s\n", track->config->id, state_str);
+        if (track->config->output.device) {
+            printf("    Device: %s\n", track->config->output.device);
+        }
+        printf("    Connected: %s\n", track->is_connected ? "yes" : "no");
     }
 }
 

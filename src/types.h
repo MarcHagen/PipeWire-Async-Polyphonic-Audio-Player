@@ -8,8 +8,16 @@
 typedef enum {
     TRACK_STATE_STOPPED,
     TRACK_STATE_PLAYING,
-    TRACK_STATE_ERROR
+    TRACK_STATE_ERROR,
+    TRACK_STATE_CONNECTING,
+    TRACK_STATE_DISCONNECTED
 } track_state_t;
+
+// Stream error info
+typedef struct {
+    char *message;
+    int code;
+} stream_error_t;
 
 // Output mapping configuration
 typedef struct {
@@ -37,6 +45,9 @@ typedef struct {
     audio_file_t *audio_file;   // Audio file handler
     bool should_stop;          // Flag for graceful shutdown
     pthread_t thread;          // Playback thread
+    stream_error_t error;      // Stream error information
+    uint32_t target_id;       // Target node ID for connection
+    bool is_connected;        // Stream connection state
 } track_instance_t;
 
 struct mqtt_client_ctx;  // Forward declaration
