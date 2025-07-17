@@ -7,6 +7,12 @@
 #include "config.h"
 #include "cli.h"
 #include "track_manager.h"
+#include "mqtt_client.h"
+#include "mqtt_client.h"
+
+// Forward declarations for MQTT callbacks
+static void handle_mqtt_command(const char *track_id, const char *command, void *userdata);
+static void handle_mqtt_connection(bool connected, void *userdata);
 
 // Configuration file search paths
 static const char *CONFIG_PATHS[] = {
@@ -40,6 +46,28 @@ static void signal_handler(int signo) {
 }
 
 // Initialize signal handlers
+// MQTT command handler
+static void handle_mqtt_command(const char *track_id, const char *command, void *userdata) {
+    track_manager_ctx_t *track_manager = (track_manager_ctx_t *)userdata;
+
+    if (strcmp(command, "play") == 0) {
+        track_manager_play(track_manager, track_id);
+    } else if (strcmp(command, "stop") == 0) {
+        track_manager_stop(track_manager, track_id);
+    } else if (strcmp(command, "stopall") == 0) {
+        track_manager_stop_all(track_manager);
+    }
+}
+
+// MQTT connection handler
+static void handle_mqtt_connection(bool connected, void *userdata __attribute__((unused))) {
+    if (connected) {
+        log_info("MQTT connection established");
+    } else {
+        log_warn("MQTT connection lost");
+    }
+}
+
 static bool init_signals(void) {
     struct sigaction sa = { 0 };
     sa.sa_handler = signal_handler;
@@ -107,7 +135,31 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    // TODO: Initialize MQTT
+    // Initialize MQTT if enabled
+    mqtt_client_ctx_t *mqtt_ctx = NULL;
+    if (g_config->mqtt.enabled) {
+        mqtt_ctx = mqtt_client_init(g_config,
+            // Command callback
+            (mqtt_command_callback_t)handle_mqtt_command,
+            // Connection callback
+            (mqtt_connection_callback_t)handle_mqtt_connection,
+            g_track_manager);
+
+        if (!mqtt_ctx) {
+            log_error("Failed to initialize MQTT client");
+            track_manager_cleanup(g_track_manager);
+            config_free(g_config);
+            return EXIT_FAILURE;
+        }
+
+        if (!mqtt_client_start(mqtt_ctx)) {
+            log_error("Failed to start MQTT client");
+            mqtt_client_cleanup(mqtt_ctx);
+            track_manager_cleanup(g_track_manager);
+            config_free(g_config);
+            return EXIT_FAILURE;
+        }
+    }
 
     log_info("Initialization complete");
 
@@ -187,6 +239,9 @@ int main(int argc, char *argv[]) {
     log_info("Shutting down...");
     if (args.track_id) {
         free(args.track_id);
+    }
+    if (mqtt_ctx) {
+        mqtt_client_cleanup(mqtt_ctx);
     }
     if (g_track_manager) {
         track_manager_cleanup(g_track_manager);
