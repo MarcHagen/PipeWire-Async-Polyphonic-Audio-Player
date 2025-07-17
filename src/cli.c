@@ -6,14 +6,16 @@
 #include "log.h"
 
 static struct option long_options[] = {
-    {"list",    no_argument,       0, 'l'},
-    {"play",    required_argument, 0, 'p'},
-    {"stop",    required_argument, 0, 's'},
-    {"stopall", no_argument,       0, 'a'},
-    {"reload",  no_argument,       0, 'r'},
-    {"status",  no_argument,       0, 't'},
-    {"test",    no_argument,       0, 'e'},
-    {"help",    no_argument,       0, 'h'},
+    {"list",        no_argument,       0, 'l'},
+    {"play",        required_argument, 0, 'p'},
+    {"stop",        required_argument, 0, 's'},
+    {"stopall",     no_argument,       0, 'a'},
+    {"reload",      no_argument,       0, 'r'},
+    {"status",      no_argument,       0, 't'},
+    {"test",        no_argument,       0, 'e'},
+    {"daemon",      no_argument,       0, 'd'},
+    {"working-dir", required_argument, 0, 'w'},
+    {"help",        no_argument,       0, 'h'},
     {0, 0, 0, 0}
 };
 
@@ -27,13 +29,17 @@ void cli_print_help(const char *program_name) {
     printf("  --reload              Reload configuration\n");
     printf("  --status              Show current status\n");
     printf("  --test                Run test tone\n");
+    printf("  --daemon              Run as daemon\n");
+    printf("  --working-dir <dir>   Set working directory (daemon mode)\n");
     printf("  --help                Show this help message\n");
 }
 
 cli_args_t cli_parse_args(int argc, char *argv[]) {
     cli_args_t args = {
         .command = CMD_NONE,
-        .track_id = NULL
+        .track_id = NULL,
+        .daemon = false,
+        .working_dir = NULL
     };
 
     int option_index = 0;
@@ -64,6 +70,12 @@ cli_args_t cli_parse_args(int argc, char *argv[]) {
                 break;
             case 'e':
                 args.command = CMD_TEST;
+                break;
+            case 'd':
+                args.daemon = true;
+                break;
+            case 'w':
+                args.working_dir = strdup(optarg);
                 break;
             case 'h':
                 args.command = CMD_HELP;

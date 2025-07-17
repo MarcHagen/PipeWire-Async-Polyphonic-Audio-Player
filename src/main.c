@@ -9,6 +9,7 @@
 #include "track_manager.h"
 #include "mqtt_client.h"
 #include "signal_handler.h"
+#include "daemon.h"
 
 // Forward declarations for MQTT callbacks
 static void handle_mqtt_command(const char *track_id, const char *command, void *userdata);
@@ -72,6 +73,15 @@ int main(int argc, char *argv[]) {
     // Initialize logging
     log_set_level("INFO");
     log_info("Async Audio Player starting...");
+
+    // Handle daemon mode
+    if (args.daemon) {
+        if (!daemonize(args.working_dir)) {
+            log_error("Failed to start daemon");
+            return EXIT_FAILURE;
+        }
+        log_info("Running in daemon mode");
+    }
 
     // Initialize signal handlers
     if (!signal_handler_init()) {
@@ -256,6 +266,9 @@ int main(int argc, char *argv[]) {
     log_info("Shutting down...");
     if (args.track_id) {
         free(args.track_id);
+    }
+    if (args.working_dir) {
+        free(args.working_dir);
     }
     if (g_config && g_config->mqtt_ctx) {
         mqtt_client_cleanup(g_config->mqtt_ctx);

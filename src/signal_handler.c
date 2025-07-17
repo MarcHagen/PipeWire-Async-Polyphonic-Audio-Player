@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <signal.h>
+#include "types.h"
 #include "signal_handler.h"
 #include "log.h"
 

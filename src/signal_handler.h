@@ -1,6 +1,7 @@
 #ifndef ASYNC_AUDIO_PLAYER_SIGNAL_HANDLER_H
 #define ASYNC_AUDIO_PLAYER_SIGNAL_HANDLER_H
 
+#include <stdbool.h>
 #include "types.h"
 
 // Initialize signal handling

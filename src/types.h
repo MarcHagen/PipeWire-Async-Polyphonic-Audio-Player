@@ -2,7 +2,6 @@
 #define ASYNC_AUDIO_PLAYER_TYPES_H
 
 #include <stdbool.h>
-#include <signal.h>
 #include <pipewire/pipewire.h>
 
 // Signal handling states
@@ -27,10 +26,16 @@ typedef struct {
     int code;
 } stream_error_t;
 
+// Channel position mapping
+typedef struct {
+    const char *name;           // Channel name (e.g., "FL", "FR", "AUX0")
+    uint32_t position;          // SPA_AUDIO_CHANNEL position value
+} channel_map_t;
+
 // Output mapping configuration
 typedef struct {
     char *device;
-    char **mapping;      // Array of port names (e.g., "AUX0", "AUX1", etc.)
+    char **mapping;      // Array of port names (e.g., "FL", "FR", "AUX0")
     int mapping_count;   // Number of channels in mapping
 } output_config_t;
 

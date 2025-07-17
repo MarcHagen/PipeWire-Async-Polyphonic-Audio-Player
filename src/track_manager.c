@@ -12,6 +12,199 @@
 #define MAX_TRACKS 32
 #define BUFFER_SIZE 4096
 
+// Build channel name from enum value
+static const char* get_channel_name_from_enum(enum spa_audio_channel position) {
+    switch (position) {
+        case SPA_AUDIO_CHANNEL_UNKNOWN: return "UNKNOWN";
+        case SPA_AUDIO_CHANNEL_NA: return "NA";
+        case SPA_AUDIO_CHANNEL_MONO: return "MONO";
+        case SPA_AUDIO_CHANNEL_FL: return "FL";
+        case SPA_AUDIO_CHANNEL_FR: return "FR";
+        case SPA_AUDIO_CHANNEL_FC: return "FC";
+        case SPA_AUDIO_CHANNEL_LFE: return "LFE";
+        case SPA_AUDIO_CHANNEL_SL: return "SL";
+        case SPA_AUDIO_CHANNEL_SR: return "SR";
+        case SPA_AUDIO_CHANNEL_FLC: return "FLC";
+        case SPA_AUDIO_CHANNEL_FRC: return "FRC";
+        case SPA_AUDIO_CHANNEL_RC: return "RC";
+        case SPA_AUDIO_CHANNEL_RL: return "RL";
+        case SPA_AUDIO_CHANNEL_RR: return "RR";
+        case SPA_AUDIO_CHANNEL_TC: return "TC";
+        case SPA_AUDIO_CHANNEL_TFL: return "TFL";
+        case SPA_AUDIO_CHANNEL_TFC: return "TFC";
+        case SPA_AUDIO_CHANNEL_TFR: return "TFR";
+        case SPA_AUDIO_CHANNEL_TRL: return "TRL";
+        case SPA_AUDIO_CHANNEL_TRC: return "TRC";
+        case SPA_AUDIO_CHANNEL_TRR: return "TRR";
+        case SPA_AUDIO_CHANNEL_RLC: return "RLC";
+        case SPA_AUDIO_CHANNEL_RRC: return "RRC";
+        case SPA_AUDIO_CHANNEL_FLW: return "FLW";
+        case SPA_AUDIO_CHANNEL_FRW: return "FRW";
+        case SPA_AUDIO_CHANNEL_LFE2: return "LFE2";
+        case SPA_AUDIO_CHANNEL_FLH: return "FLH";
+        case SPA_AUDIO_CHANNEL_FCH: return "FCH";
+        case SPA_AUDIO_CHANNEL_FRH: return "FRH";
+        case SPA_AUDIO_CHANNEL_TFLC: return "TFLC";
+        case SPA_AUDIO_CHANNEL_TFRC: return "TFRC";
+        case SPA_AUDIO_CHANNEL_TSL: return "TSL";
+        case SPA_AUDIO_CHANNEL_TSR: return "TSR";
+        case SPA_AUDIO_CHANNEL_LLFE: return "LLFE";
+        case SPA_AUDIO_CHANNEL_RLFE: return "RLFE";
+        case SPA_AUDIO_CHANNEL_BC: return "BC";
+        case SPA_AUDIO_CHANNEL_BLC: return "BLC";
+        case SPA_AUDIO_CHANNEL_BRC: return "BRC";
+        default:
+            if (position >= SPA_AUDIO_CHANNEL_START_Aux && 
+                position <= SPA_AUDIO_CHANNEL_LAST_Aux) {
+                static char aux_name[8];
+                snprintf(aux_name, sizeof(aux_name), "AUX%d", 
+                        position - SPA_AUDIO_CHANNEL_START_Aux);
+                return aux_name;
+            }
+            return "UNKNOWN";
+    }
+}
+
+// Get enum value from channel name
+static enum spa_audio_channel get_channel_position(const char *name) {
+    if (!name) return SPA_AUDIO_CHANNEL_UNKNOWN;
+
+    // Check standard channels first
+    if (strcmp(name, "UNKNOWN") == 0) return SPA_AUDIO_CHANNEL_UNKNOWN;
+    if (strcmp(name, "NA") == 0) return SPA_AUDIO_CHANNEL_NA;
+    if (strcmp(name, "MONO") == 0) return SPA_AUDIO_CHANNEL_MONO;
+    if (strcmp(name, "FL") == 0) return SPA_AUDIO_CHANNEL_FL;
+    if (strcmp(name, "FR") == 0) return SPA_AUDIO_CHANNEL_FR;
+    if (strcmp(name, "FC") == 0) return SPA_AUDIO_CHANNEL_FC;
+    if (strcmp(name, "LFE") == 0) return SPA_AUDIO_CHANNEL_LFE;
+    if (strcmp(name, "SL") == 0) return SPA_AUDIO_CHANNEL_SL;
+    if (strcmp(name, "SR") == 0) return SPA_AUDIO_CHANNEL_SR;
+    if (strcmp(name, "FLC") == 0) return SPA_AUDIO_CHANNEL_FLC;
+    if (strcmp(name, "FRC") == 0) return SPA_AUDIO_CHANNEL_FRC;
+    if (strcmp(name, "RC") == 0) return SPA_AUDIO_CHANNEL_RC;
+    if (strcmp(name, "RL") == 0) return SPA_AUDIO_CHANNEL_RL;
+    if (strcmp(name, "RR") == 0) return SPA_AUDIO_CHANNEL_RR;
+    if (strcmp(name, "TC") == 0) return SPA_AUDIO_CHANNEL_TC;
+    if (strcmp(name, "TFL") == 0) return SPA_AUDIO_CHANNEL_TFL;
+    if (strcmp(name, "TFC") == 0) return SPA_AUDIO_CHANNEL_TFC;
+    if (strcmp(name, "TFR") == 0) return SPA_AUDIO_CHANNEL_TFR;
+    if (strcmp(name, "TRL") == 0) return SPA_AUDIO_CHANNEL_TRL;
+    if (strcmp(name, "TRC") == 0) return SPA_AUDIO_CHANNEL_TRC;
+    if (strcmp(name, "TRR") == 0) return SPA_AUDIO_CHANNEL_TRR;
+    if (strcmp(name, "RLC") == 0) return SPA_AUDIO_CHANNEL_RLC;
+    if (strcmp(name, "RRC") == 0) return SPA_AUDIO_CHANNEL_RRC;
+    if (strcmp(name, "FLW") == 0) return SPA_AUDIO_CHANNEL_FLW;
+    if (strcmp(name, "FRW") == 0) return SPA_AUDIO_CHANNEL_FRW;
+    if (strcmp(name, "LFE2") == 0) return SPA_AUDIO_CHANNEL_LFE2;
+    if (strcmp(name, "FLH") == 0) return SPA_AUDIO_CHANNEL_FLH;
+    if (strcmp(name, "FCH") == 0) return SPA_AUDIO_CHANNEL_FCH;
+    if (strcmp(name, "FRH") == 0) return SPA_AUDIO_CHANNEL_FRH;
+    if (strcmp(name, "TFLC") == 0) return SPA_AUDIO_CHANNEL_TFLC;
+    if (strcmp(name, "TFRC") == 0) return SPA_AUDIO_CHANNEL_TFRC;
+    if (strcmp(name, "TSL") == 0) return SPA_AUDIO_CHANNEL_TSL;
+    if (strcmp(name, "TSR") == 0) return SPA_AUDIO_CHANNEL_TSR;
+    if (strcmp(name, "LLFE") == 0) return SPA_AUDIO_CHANNEL_LLFE;
+    if (strcmp(name, "RLFE") == 0) return SPA_AUDIO_CHANNEL_RLFE;
+    if (strcmp(name, "BC") == 0) return SPA_AUDIO_CHANNEL_BC;
+    if (strcmp(name, "BLC") == 0) return SPA_AUDIO_CHANNEL_BLC;
+    if (strcmp(name, "BRC") == 0) return SPA_AUDIO_CHANNEL_BRC;
+
+    // Check for AUX channels
+    if (strncmp(name, "AUX", 3) == 0) {
+        int aux_num = atoi(name + 3);
+        if (aux_num >= 0 && aux_num <= (SPA_AUDIO_CHANNEL_LAST_Aux - SPA_AUDIO_CHANNEL_START_Aux)) {
+            return SPA_AUDIO_CHANNEL_START_Aux + aux_num;
+        }
+    }
+
+    return SPA_AUDIO_CHANNEL_UNKNOWN;
+}
+    {"UNKNOWN", SPA_AUDIO_CHANNEL_UNKNOWN},
+    {"NA",      SPA_AUDIO_CHANNEL_NA},
+    {"MONO",    SPA_AUDIO_CHANNEL_MONO},
+    // Front
+    {"FL",      SPA_AUDIO_CHANNEL_FL},   // Front Left
+    {"FR",      SPA_AUDIO_CHANNEL_FR},   // Front Right
+    {"FC",      SPA_AUDIO_CHANNEL_FC},   // Front Center
+    {"LFE",     SPA_AUDIO_CHANNEL_LFE},  // Low Frequency Effects
+    {"SL",      SPA_AUDIO_CHANNEL_SL},   // Side Left
+    {"SR",      SPA_AUDIO_CHANNEL_SR},   // Side Right
+    {"FLC",     SPA_AUDIO_CHANNEL_FLC},  // Front Left Center
+    {"FRC",     SPA_AUDIO_CHANNEL_FRC},  // Front Right Center
+    {"RC",      SPA_AUDIO_CHANNEL_RC},   // Rear Center
+    {"RL",      SPA_AUDIO_CHANNEL_RL},   // Rear Left
+    {"RR",      SPA_AUDIO_CHANNEL_RR},   // Rear Right
+    // Top
+    {"TC",      SPA_AUDIO_CHANNEL_TC},   // Top Center
+    {"TFL",     SPA_AUDIO_CHANNEL_TFL},  // Top Front Left
+    {"TFC",     SPA_AUDIO_CHANNEL_TFC},  // Top Front Center
+    {"TFR",     SPA_AUDIO_CHANNEL_TFR},  // Top Front Right
+    {"TRL",     SPA_AUDIO_CHANNEL_TRL},  // Top Rear Left
+    {"TRC",     SPA_AUDIO_CHANNEL_TRC},  // Top Rear Center
+    {"TRR",     SPA_AUDIO_CHANNEL_TRR},  // Top Rear Right
+    // Additional channels
+    {"RLC",     SPA_AUDIO_CHANNEL_RLC},  // Rear Left Center
+    {"RRC",     SPA_AUDIO_CHANNEL_RRC},  // Rear Right Center
+    {"FLW",     SPA_AUDIO_CHANNEL_FLW},  // Front Left Wide
+    {"FRW",     SPA_AUDIO_CHANNEL_FRW},  // Front Right Wide
+    {"LFE2",    SPA_AUDIO_CHANNEL_LFE2}, // Second Low Frequency Effects
+    {"FLH",     SPA_AUDIO_CHANNEL_FLH},  // Front Left High
+    {"FCH",     SPA_AUDIO_CHANNEL_FCH},  // Front Center High
+    {"FRH",     SPA_AUDIO_CHANNEL_FRH},  // Front Right High
+    {"TFLC",    SPA_AUDIO_CHANNEL_TFLC}, // Top Front Left Center
+    {"TFRC",    SPA_AUDIO_CHANNEL_TFRC}, // Top Front Right Center
+    {"TSL",     SPA_AUDIO_CHANNEL_TSL},  // Top Side Left
+    {"TSR",     SPA_AUDIO_CHANNEL_TSR},  // Top Side Right
+    {"LLFE",    SPA_AUDIO_CHANNEL_LLFE}, // Left LFE
+    {"RLFE",    SPA_AUDIO_CHANNEL_RLFE}, // Right LFE
+    {"BC",      SPA_AUDIO_CHANNEL_BC},   // Bottom Center
+    {"BLC",     SPA_AUDIO_CHANNEL_BLC},  // Bottom Left Center
+    {"BRC",     SPA_AUDIO_CHANNEL_BRC},  // Bottom Right Center
+    // AUX channels (0-63)
+    {"AUX0",    SPA_AUDIO_CHANNEL_AUX0},
+    {"AUX1",    SPA_AUDIO_CHANNEL_AUX1},
+    {"AUX2",    SPA_AUDIO_CHANNEL_AUX2},
+    {"AUX3",    SPA_AUDIO_CHANNEL_AUX3},
+    {"AUX4",    SPA_AUDIO_CHANNEL_AUX4},
+    {"AUX5",    SPA_AUDIO_CHANNEL_AUX5},
+    {"AUX6",    SPA_AUDIO_CHANNEL_AUX6},
+    {"AUX7",    SPA_AUDIO_CHANNEL_AUX7},
+    {"AUX8",    SPA_AUDIO_CHANNEL_AUX8},
+    {"AUX9",    SPA_AUDIO_CHANNEL_AUX9},
+    {"AUX10",   SPA_AUDIO_CHANNEL_AUX10},
+    {"AUX11",   SPA_AUDIO_CHANNEL_AUX11},
+    {"AUX12",   SPA_AUDIO_CHANNEL_AUX12},
+    {"AUX13",   SPA_AUDIO_CHANNEL_AUX13},
+    {"AUX14",   SPA_AUDIO_CHANNEL_AUX14},
+    {"AUX15",   SPA_AUDIO_CHANNEL_AUX15},
+    // ... Add more AUX channels as needed up to AUX63
+    {NULL, 0} // Terminator
+};
+
+// Get channel position from name
+static uint32_t get_channel_position(const char *name) {
+    if (!name) return SPA_AUDIO_CHANNEL_UNKNOWN;
+
+    for (const channel_map_t *map = CHANNEL_MAP; map->name != NULL; map++) {
+        if (strcasecmp(map->name, name) == 0) {
+            return map->position;
+        }
+    }
+
+    return SPA_AUDIO_CHANNEL_UNKNOWN;
+}
+
+// Get channel name from position
+static const char* get_channel_name(uint32_t position) {
+    for (const channel_map_t *map = CHANNEL_MAP; map->name != NULL; map++) {
+        if (map->position == position) {
+            return map->name;
+        }
+    }
+
+    return "UNKNOWN";
+}
+
 struct track_manager_ctx {
     global_config_t *config;
     track_instance_t tracks[MAX_TRACKS];
@@ -293,6 +486,23 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
 
     // Set channel positions
     if (track->config->output.mapping_count > 0) {
+        // Set default mapping first
+        for (uint8_t i = 0; i < SPA_AUDIO_MAX_CHANNELS; i++) {
+            audio_info.position[i] = SPA_AUDIO_CHANNEL_UNKNOWN;
+        }
+
+        // Map each channel according to configuration
+        for (uint8_t i = 0; i < track->config->output.mapping_count && i < SPA_AUDIO_MAX_CHANNELS; i++) {
+            const char *port_name = track->config->output.mapping[i];
+            audio_info.position[i] = get_channel_position(port_name);
+            if (audio_info.position[i] == SPA_AUDIO_CHANNEL_UNKNOWN) {
+                log_warn("Unknown channel name '%s', using UNKNOWN", port_name);
+            }
+        }
+        audio_info.channels = track->config->output.mapping_count;
+    } else {
+        // If no mapping specified, use sequential AUX channels
+        audio_info.channels = track->audio_file->info.channels;
         for (uint8_t i = 0; i < audio_info.channels && i < SPA_AUDIO_MAX_CHANNELS; i++) {
             audio_info.position[i] = SPA_AUDIO_CHANNEL_AUX0 + i;
         }

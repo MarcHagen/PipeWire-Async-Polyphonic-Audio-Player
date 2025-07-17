@@ -20,6 +20,8 @@ typedef enum {
 typedef struct {
     cli_command_t command;
     char *track_id;
+    bool daemon;              // Run in daemon mode
+    char *working_dir;        // Working directory for daemon
 } cli_args_t;
 
 // Parse command line arguments
