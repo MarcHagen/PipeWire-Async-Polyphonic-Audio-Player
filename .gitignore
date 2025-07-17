@@ -5,6 +5,7 @@ multichannel_player
 *.o
 *.a
 *.so
+bin/
 
 # Audio files
 *.pcm
