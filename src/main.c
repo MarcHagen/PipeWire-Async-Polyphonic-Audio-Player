@@ -8,7 +8,7 @@
 #include "cli.h"
 #include "track_manager.h"
 #include "mqtt_client.h"
-#include "mqtt_client.h"
+#include "signal_handler.h"
 
 // Forward declarations for MQTT callbacks
 static void handle_mqtt_command(const char *track_id, const char *command, void *userdata);
@@ -33,19 +33,8 @@ static const char* find_config_file(void) {
 }
 
 // Global state
-static bool g_running = true;
 static global_config_t *g_config = NULL;
 static track_manager_ctx_t *g_track_manager = NULL;
-
-// Signal handler
-static void signal_handler(int signo) {
-    if (signo == SIGINT || signo == SIGTERM) {
-        log_info("Received shutdown signal");
-        g_running = false;
-    }
-}
-
-// Initialize signal handlers
 // MQTT command handler
 static void handle_mqtt_command(const char *track_id, const char *command, void *userdata) {
     track_manager_ctx_t *track_manager = (track_manager_ctx_t *)userdata;
@@ -68,22 +57,6 @@ static void handle_mqtt_connection(bool connected, void *userdata __attribute__(
     }
 }
 
-static bool init_signals(void) {
-    struct sigaction sa = { 0 };
-    sa.sa_handler = signal_handler;
-
-    if (sigaction(SIGINT, &sa, NULL) == -1) {
-        log_error("Failed to set up SIGINT handler");
-        return false;
-    }
-
-    if (sigaction(SIGTERM, &sa, NULL) == -1) {
-        log_error("Failed to set up SIGTERM handler");
-        return false;
-    }
-
-    return true;
-}
 
 // Program entry point
 int main(int argc, char *argv[]) {
@@ -101,7 +74,7 @@ int main(int argc, char *argv[]) {
     log_info("Async Audio Player starting...");
 
     // Initialize signal handlers
-    if (!init_signals()) {
+    if (!signal_handler_init()) {
         return EXIT_FAILURE;
     }
 
@@ -229,9 +202,54 @@ int main(int argc, char *argv[]) {
     }
 
     // Main loop
-    while (g_running) {
-        // TODO: Process MQTT messages
-        usleep(100000); // 100ms sleep to prevent busy loop
+    bool running = true;
+    while (running) {
+        signal_state_t sig_state = signal_handler_get_state();
+
+        switch (sig_state) {
+            case SIGNAL_SHUTDOWN:
+                log_info("Received shutdown signal");
+                running = false;
+                break;
+
+            case SIGNAL_RELOAD:
+                log_info("Reloading configuration");
+                {
+                    const char *reload_path = find_config_file();
+                    if (!reload_path) {
+                        log_error("Configuration file not found for reload");
+                    } else {
+                        global_config_t *new_config = config_reload(reload_path);
+                        if (new_config) {
+                            track_manager_stop_all(g_track_manager);
+                            if (g_config->mqtt_ctx) {
+                                mqtt_client_stop(g_config->mqtt_ctx);
+                            }
+                            track_manager_cleanup(g_track_manager);
+                            config_free(g_config);
+                            g_config = new_config;
+
+                            g_track_manager = track_manager_init(g_config);
+                            if (!g_track_manager) {
+                                log_error("Failed to reinitialize track manager");
+                                running = false;
+                                break;
+                            }
+
+                            log_info("Configuration reloaded successfully");
+                        } else {
+                            log_error("Failed to reload configuration");
+                        }
+                    }
+                }
+                signal_handler_reset();
+                break;
+
+            case SIGNAL_NONE:
+            default:
+                usleep(100000); // 100ms sleep to prevent busy loop
+                break;
+        }
     }
 
     // Cleanup
@@ -250,5 +268,6 @@ int main(int argc, char *argv[]) {
         config_free(g_config);
     }
 
+    signal_handler_cleanup();
     return EXIT_SUCCESS;
 }

@@ -2,7 +2,15 @@
 #define ASYNC_AUDIO_PLAYER_TYPES_H
 
 #include <stdbool.h>
+#include <signal.h>
 #include <pipewire/pipewire.h>
+
+// Signal handling states
+typedef enum {
+    SIGNAL_NONE,
+    SIGNAL_RELOAD,
+    SIGNAL_SHUTDOWN
+} signal_state_t;
 
 // Track states
 typedef enum {
