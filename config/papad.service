@@ -1,9 +1,9 @@
 [Unit]
-Description=Async Multichannel Audio Player
+Description=PipeWire Async Polyphonic Audio Player
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/async-audio-player
+ExecStart=/usr/local/bin/papad
 Restart=always
 User=root
 Group=audio

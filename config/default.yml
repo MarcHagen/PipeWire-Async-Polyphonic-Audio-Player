@@ -1,5 +1,5 @@
 ---
-# Default configuration for async-multichannel-audio-player
+# Default configuration for PipeWire Async Polyphonic Audio Player
 
 logging:
   level: INFO

@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include "track_manager.h"
 
-#define SOCKET_PATH "/var/run/async-audio-player.sock"
+#define SOCKET_PATH "/var/run/papad.sock"
 
 // Socket server context
 typedef struct {
@@ -22,7 +22,7 @@ typedef struct {
 #include "track_manager.h"
 
 // Socket path - should be visible to main.c
-#define SOCKET_PATH "/var/run/async-audio-player.sock"
+#define SOCKET_PATH "/var/run/papa.sock"
 
 // Socket server context
 typedef struct {

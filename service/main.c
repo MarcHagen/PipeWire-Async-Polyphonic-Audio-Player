@@ -6,12 +6,11 @@
 #include "types.h"
 #include "log.h"
 #include "config.h"
-#include "cli.h"
 #include "track_manager.h"
 #include "signal_handler.h"
 #include "socket_server.h"
 
-#define PID_FILE "/var/run/async-audio-player.pid"
+#define PID_FILE "/var/run/papad.pid"
 
 // Create PID file
 static bool create_pid_file(void) {
@@ -38,7 +37,7 @@ static void remove_pid_file(void) {
 static const char *CONFIG_PATHS[] = {
     "./config/default.yml",
     "./default.yml",
-    "/etc/async-audio-player/config.yml",
+    "/etc/papa/config.yml",
     NULL
 };
 
@@ -64,14 +63,14 @@ int main(const int argc, char *argv[]) {
 
     // Initialize logging
     log_set_level("INFO");
-    log_info("Async Audio Player starting...");
+    log_info("PAPA - PipeWire Async Polyphonic Audio Player starting...");
 
     // Print help if requested
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-            printf("Async Multichannel Audio Player\n");
+            printf("PAPA - PipeWire Async Polyphonic Audio Player\n");
             printf("Usage: %s [--help]\n\n", argv[0]);
-            printf("This program runs as a server. To control it, use the client utility.\n");
+            printf("This program runs as a server. To control it, use the 'papa' client utility.\n");
             printf("The server listens for commands on the Unix socket at %s\n", SOCKET_PATH);
             return EXIT_SUCCESS;
         }

@@ -2,10 +2,10 @@ CC = gcc
 VERSION = 1.0.0
 
 # Directories
-SRC_DIR = src
+SERIVCE_DIR = service
+CLIENT_DIR = client
 OBJ_DIR = obj
 BIN_DIR = bin
-TOOLS_DIR = tools
 INSTALL_DIR = /usr/local/bin
 
 # Compiler flags
@@ -15,24 +15,24 @@ WARN_FLAGS = -Wall -Wextra -Wpedantic -Wformat=2 -Wno-unused-parameter \
              -Wshadow -Wwrite-strings -Wstrict-prototypes -Wold-style-definition \
              -Wredundant-decls -Wnested-externs -Wmissing-include-dirs
 
-CFLAGS = $(WARN_FLAGS) $(OPTIM_FLAGS) $(DEBUG_FLAGS) -I./$(SRC_DIR) -DVERSION=\"$(VERSION)\" \
+CFLAGS = $(WARN_FLAGS) $(OPTIM_FLAGS) $(DEBUG_FLAGS) -I./$(SERIVCE_DIR) -DVERSION=\"$(VERSION)\" \
          $(shell pkg-config --cflags libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile)
 
 LDFLAGS = $(shell pkg-config --libs libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile) -lpthread -lm
 
 # Source and object files
-SRCS = $(wildcard $(SRC_DIR)/*.c)
-TOOL_SRCS = $(wildcard $(TOOLS_DIR)/*.c)
-TOOL_BINS = $(TOOL_SRCS:$(TOOLS_DIR)/%.c=$(BIN_DIR)/%)
-OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+SERVICE_SRCS = $(wildcard $(SERIVCE_DIR)/*.c)
+SERVICE_BIN = $(BIN_DIR)/papad
+CLIENT_SRCS = $(wildcard $(CLIENT_DIR)/*.c)
+CLIENT_BIN = $(BIN_DIR)/papa
+OBJS = $(SERVICE_SRCS:$(SERIVCE_DIR)/%.c=$(OBJ_DIR)/%.o)
 DEPS = $(OBJS:.o=.d)
-TARGET = $(BIN_DIR)/async-multichannel-audio-player
 
 # Phony targets
 .PHONY: all clean directories install uninstall debug release help
 
 # Default target
-all: directories $(TARGET) $(TOOL_BINS)
+all: directories $(SERVICE_BIN) $(CLIENT_BIN)
 
 # Include dependency files
 -include $(DEPS)
@@ -42,17 +42,17 @@ directories:
 	@mkdir -p $(OBJ_DIR) $(BIN_DIR)
 
 # Compile source files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+$(OBJ_DIR)/%.o: $(SERIVCE_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-# Link the main target
-$(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
-	@echo "Build complete: $(TARGET)"
+# Build service
+$(SERVICE_BIN): $(OBJS)
+	$(CC) $(OBJS) -o $(SERVICE_BIN) $(LDFLAGS)
+	@echo "Build complete: $(SERVICE_BIN)"
 
-# Build tools
-$(BIN_DIR)/%: $(TOOLS_DIR)/%.c
+# Build client
+$(BIN_DIR): $(CLIENT_DIR)/%.c
 	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 # Debug build
@@ -69,11 +69,13 @@ release: all
 # Install
 install: all
 	install -d $(DESTDIR)$(INSTALL_DIR)
-	install -m 755 $(TARGET) $(DESTDIR)$(INSTALL_DIR)
+	install -m 755 $(SERVICE_BIN) $(DESTDIR)$(INSTALL_DIR)
+	install -m 755 $(CLIENT_BIN) $(DESTDIR)$(INSTALL_DIR)
 
 # Uninstall
 uninstall:
-	rm -f $(DESTDIR)$(INSTALL_DIR)/$(notdir $(TARGET))
+	rm -f $(DESTDIR)$(INSTALL_DIR)/$(notdir $(SERVICE_BIN))
+	rm -f $(DESTDIR)$(INSTALL_DIR)/$(notdir $(CLIENT_BIN))
 
 # Clean build artifacts
 clean:

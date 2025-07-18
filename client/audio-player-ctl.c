@@ -7,7 +7,7 @@
 #include <getopt.h>
 
 // Socket path definition
-#define SOCKET_PATH "/var/run/async-audio-player.sock"
+#define SOCKET_PATH "/var/run/papad.sock"
 #define BUFFER_SIZE 1024
 
 // Command line options
@@ -24,6 +24,7 @@ static struct option long_options[] = {
 
 // Print help message
 static void print_help(const char *program_name) {
+    printf("PAPA - PipeWire Async Polyphonic Audio Player Client\n\n");
     printf("Usage: %s [options]\n\n", program_name);
     printf("Options:\n");
     printf("  --list                List all configured tracks\n");
