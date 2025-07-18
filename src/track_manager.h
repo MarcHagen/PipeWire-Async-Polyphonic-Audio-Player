@@ -2,9 +2,13 @@
 #define ASYNC_AUDIO_PLAYER_TRACK_MANAGER_H
 
 #include "types.h"
+#include <spa/param/audio/raw.h>
 
 // Track manager context
 typedef struct track_manager_ctx track_manager_ctx_t;
+
+// Helper function to convert port names to PipeWire channel positions
+enum spa_audio_channel get_channel_position(const char *port_name);
 
 // Initialize track manager
 track_manager_ctx_t* track_manager_init(global_config_t *config);
@@ -23,6 +27,6 @@ void track_manager_list_tracks(track_manager_ctx_t *ctx);
 void track_manager_print_status(track_manager_ctx_t *ctx);
 
 // Test tone functionality
-bool track_manager_play_test_tone(track_manager_ctx_t *ctx);
+bool track_manager_play_test_tone(track_manager_ctx_t *ctx, const char *channel_mapping);
 
 #endif // ASYNC_AUDIO_PLAYER_TRACK_MANAGER_H
