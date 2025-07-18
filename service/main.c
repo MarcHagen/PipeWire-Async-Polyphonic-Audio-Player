@@ -75,7 +75,8 @@ int main(const int argc, char *argv[]) {
             printf("PAPA - PipeWire Async Polyphonic Audio Player\n");
             printf("Usage: %s [--help]\n\n", argv[0]);
             printf("This program runs as a server. To control it, use the 'papa' client utility.\n");
-            printf("The server listens for commands on the Unix socket at %s\n", SOCKET_PATH);
+            char socket_path[256];
+            printf("The server listens for commands on the Unix socket at %s\n", get_socket_path(socket_path, sizeof(socket_path)) ? socket_path : "<error>");
             return EXIT_SUCCESS;
         }
     }

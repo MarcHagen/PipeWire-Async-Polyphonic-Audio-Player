@@ -192,6 +192,23 @@ static void* socket_server_thread(void* arg)
     return NULL;
 }
 
+// Get the socket path for the current user
+char* get_socket_path(char* buffer, size_t size)
+{
+    if (!buffer || size == 0)
+    {
+        return NULL;
+    }
+
+    // Ensure the runtime directory exists
+    char dir_path[256];
+    snprintf(dir_path, sizeof(dir_path), "/var/run/user/%d/papa", (int)getuid());
+
+    // Construct the socket path
+    snprintf(buffer, size, "%s/papa.sock", dir_path);
+    return buffer;
+}
+
 // Initialize socket server
 socket_server_ctx_t* socket_server_init(track_manager_ctx_t* track_manager)
 {
@@ -202,8 +219,14 @@ socket_server_ctx_t* socket_server_init(track_manager_ctx_t* track_manager)
         return NULL;
     }
 
-    // Construct the actual path
-    snprintf(ctx->socket_path, sizeof(ctx->socket_path), SOCKET_PATH_TEMPLATE, (int)getuid());
+    // Get the socket path
+    if (!get_socket_path(ctx->socket_path, sizeof(ctx->socket_path)))
+    {
+        log_error("Failed to get socket path");
+        free(ctx);
+        return NULL;
+    }
+
     ctx->track_manager = track_manager;
     ctx->running = false;
     ctx->server_fd = -1;

@@ -5,9 +5,6 @@
 #include <pthread.h>
 #include "track_manager.h"
 
-// Socket path - should be visible to main.c
-#define SOCKET_PATH_TEMPLATE "/var/run/user/%d/papa/papad.sock"
-
 // Socket server context
 typedef struct {
     track_manager_ctx_t *track_manager;
@@ -16,6 +13,9 @@ typedef struct {
     bool running;
     char socket_path[256];  // Added to store the actual path
 } socket_server_ctx_t;
+
+// Get the socket path for the current user
+char* get_socket_path(char* buffer, size_t size);
 
 // Initialize socket server
 socket_server_ctx_t *socket_server_init(track_manager_ctx_t *track_manager);
