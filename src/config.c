@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include "config.h"
 #include "log.h"
-#include "mqtt_client.h"
 
 static void parse_logging(yaml_document_t *doc, const yaml_node_t *node, global_config_t *config) {
     if (node->type != YAML_MAPPING_NODE) return;

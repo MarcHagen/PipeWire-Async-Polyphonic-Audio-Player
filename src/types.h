@@ -63,8 +63,6 @@ typedef struct {
     bool is_connected;        // Stream connection state
 } track_instance_t;
 
-struct mqtt_client_ctx;  // Forward declaration
-
 // Global configuration
 typedef struct {
     struct {

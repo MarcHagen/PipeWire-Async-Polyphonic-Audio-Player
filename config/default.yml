@@ -4,14 +4,6 @@
 logging:
   level: INFO
 
-mqtt:
-  host: "localhost"
-  port: 1883
-  client_id: "async-audio-player"
-  username: ""
-  password: ""
-  topic_prefix: "async-audio-player"
-
 # Example tracks configuration
 tracks:
   - id: "test1"

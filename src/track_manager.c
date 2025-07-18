@@ -1,6 +1,5 @@
 #include "track_manager.h"
 #include "log.h"
-#include "mqtt_client.h"
 #include <math.h>
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>
@@ -458,11 +457,6 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
     ctx->active_tracks++;
     log_info("Started playback of track: %s", track_id);
 
-    // Publish MQTT status if enabled
-    if (ctx->config->mqtt_ctx) {
-        mqtt_client_publish_status(ctx->config->mqtt_ctx, track_id, true);
-    }
-
     return true;
 }
 
@@ -501,11 +495,6 @@ bool track_manager_stop(track_manager_ctx_t *ctx, const char *track_id) {
                 );
             }
             ctx->active_tracks--;
-
-            // Publish MQTT status if enabled
-            if (ctx->config->mqtt_ctx) {
-                mqtt_client_publish_status(ctx->config->mqtt_ctx, track_id, false);
-            }
 
             log_info("Stopped track: %s", track_id);
             return true;
