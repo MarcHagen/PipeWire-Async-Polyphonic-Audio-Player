@@ -22,7 +22,7 @@ void log_set_level(const char *level) {
 }
 
 // Internal logging function
-static void log_print(log_level_t level, const char *level_str, const char *format, va_list args) {
+static void log_print(const log_level_t level, const char *level_str, const char *format, va_list args) {
     if (level < current_level) return;
 
     time_t now;

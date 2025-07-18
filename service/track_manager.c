@@ -11,6 +11,7 @@
 #define MAX_TRACKS 32
 #define BUFFER_SIZE 4096
 
+#include <stdint.h>
 #include <spa/param/audio/raw.h>
 
 struct track_manager_ctx {
@@ -401,9 +402,7 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
 
     struct spa_audio_info_raw audio_info = {
         .format = SPA_AUDIO_FORMAT_F32,
-        .channels = track->config->output.mapping_count > 0
-                        ? track->config->output.mapping_count
-                        : track->audio_file->info.channels,
+        .channels = track->config->output.mapping_count > 0 ? track->config->output.mapping_count : track->audio_file->info.channels,
         .rate = track->audio_file->info.samplerate
     };
 

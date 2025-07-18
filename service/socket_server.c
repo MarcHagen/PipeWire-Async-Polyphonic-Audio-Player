@@ -30,11 +30,9 @@ static int handle_play(track_manager_ctx_t* mgr, const char* track_id, char* res
         snprintf(response, resp_size, "OK: Playing track %s", track_id);
         return 0;
     }
-    else
-    {
-        snprintf(response, resp_size, "ERROR: Failed to play track %s", track_id);
-        return -1;
-    }
+
+    snprintf(response, resp_size, "ERROR: Failed to play track %s", track_id);
+    return -1;
 }
 
 static int handle_stop(track_manager_ctx_t* mgr, const char* track_id, char* response, size_t resp_size)
@@ -50,11 +48,9 @@ static int handle_stop(track_manager_ctx_t* mgr, const char* track_id, char* res
         snprintf(response, resp_size, "OK: Stopped track %s", track_id);
         return 0;
     }
-    else
-    {
-        snprintf(response, resp_size, "ERROR: Failed to stop track %s", track_id);
-        return -1;
-    }
+
+    snprintf(response, resp_size, "ERROR: Failed to stop track %s", track_id);
+    return -1;
 }
 
 static int handle_stop_all(track_manager_ctx_t* mgr, const char* arg, char* response, size_t resp_size)
@@ -66,11 +62,9 @@ static int handle_stop_all(track_manager_ctx_t* mgr, const char* arg, char* resp
         snprintf(response, resp_size, "OK: Stopped all tracks");
         return 0;
     }
-    else
-    {
-        snprintf(response, resp_size, "ERROR: Failed to stop all tracks");
-        return -1;
-    }
+
+    snprintf(response, resp_size, "ERROR: Failed to stop all tracks");
+    return -1;
 }
 
 static int handle_list(track_manager_ctx_t* mgr, const char* arg, char* response, size_t resp_size)
