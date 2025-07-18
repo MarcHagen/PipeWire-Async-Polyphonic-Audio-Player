@@ -10,26 +10,30 @@
 #include "signal_handler.h"
 #include "socket_server.h"
 
-#define PID_FILE "/var/run/papad.pid"
+#define PID_FILE_TEMPLATE "/var/run/user/%d/papa/papad.pid"
+static char pid_file_path[256];  // To store the actual path
 
 // Create PID file
 static bool create_pid_file(void) {
-    FILE *file = fopen(PID_FILE, "w");
+    // Construct the actual path
+    snprintf(pid_file_path, sizeof(pid_file_path), PID_FILE_TEMPLATE, (int)getuid());
+
+    FILE *file = fopen(pid_file_path, "w");
     if (!file) {
-        log_error("Failed to create PID file: %s", PID_FILE);
+        log_error("Failed to create PID file: %s", pid_file_path);
         return false;
     }
 
     fprintf(file, "%d\n", getpid());
     fclose(file);
 
-    log_info("Created PID file: %s", PID_FILE);
+    log_info("Created PID file: %s", pid_file_path);
     return true;
 }
 
 // Remove PID file
 static void remove_pid_file(void) {
-    unlink(PID_FILE);
+    unlink(pid_file_path);
     log_info("Removed PID file: %s", PID_FILE);
 }
 

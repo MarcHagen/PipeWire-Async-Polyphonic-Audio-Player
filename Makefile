@@ -7,6 +7,7 @@ CLIENT_DIR = client
 OBJ_DIR = obj
 BIN_DIR = bin
 INSTALL_DIR = /usr/local/bin
+RUNTIME_DIR = $(shell echo "/var/run/user/$$(id -u)/papad")
 
 # Compiler flags
 OPTIM_FLAGS = -O2
@@ -39,7 +40,7 @@ all: directories $(SERVICE_BIN) $(CLIENT_BIN)
 
 # Create directories
 directories:
-	@mkdir -p $(OBJ_DIR) $(BIN_DIR)
+	@mkdir -p $(OBJ_DIR) $(BIN_DIR) $(RUNTIME_DIR)
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SERIVCE_DIR)/%.c
