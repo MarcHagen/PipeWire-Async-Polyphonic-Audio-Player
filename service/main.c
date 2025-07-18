@@ -34,7 +34,7 @@ static bool create_pid_file(void) {
 // Remove PID file
 static void remove_pid_file(void) {
     unlink(pid_file_path);
-    log_info("Removed PID file: %s", PID_FILE);
+    log_info("Removed PID file: %s", pid_file_path);
 }
 
 // Configuration file search paths
