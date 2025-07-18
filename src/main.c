@@ -122,29 +122,6 @@ int main(const int argc, char *argv[]) {
         goto cleanup;
     }
 
-    g_config->mqtt_ctx = mqtt_client_init(
-        g_config,
-        // Command callback
-        (mqtt_command_callback_t) handle_mqtt_command,
-        // Connection callback
-        (mqtt_connection_callback_t) handle_mqtt_connection,
-        g_track_manager
-    );
-
-    if (!g_config->mqtt_ctx) {
-        log_error("Failed to initialize MQTT client");
-        track_manager_cleanup(g_track_manager);
-        config_free(g_config);
-        return EXIT_FAILURE;
-    }
-
-    if (!mqtt_client_start(g_config->mqtt_ctx)) {
-        log_error("Failed to start MQTT client");
-        mqtt_client_cleanup(g_config->mqtt_ctx);
-        track_manager_cleanup(g_track_manager);
-        return EXIT_FAILURE;
-    }
-
     log_info("Initialization complete");
 
     // Handle CLI commands
@@ -229,6 +206,29 @@ int main(const int argc, char *argv[]) {
                 goto cleanup;
             }
             break;
+    }
+
+    g_config->mqtt_ctx = mqtt_client_init(
+        g_config,
+        // Command callback
+        (mqtt_command_callback_t) handle_mqtt_command,
+        // Connection callback
+        (mqtt_connection_callback_t) handle_mqtt_connection,
+        g_track_manager
+    );
+
+    if (!g_config->mqtt_ctx) {
+        log_error("Failed to initialize MQTT client");
+        track_manager_cleanup(g_track_manager);
+        config_free(g_config);
+        return EXIT_FAILURE;
+    }
+
+    if (!mqtt_client_start(g_config->mqtt_ctx)) {
+        log_error("Failed to start MQTT client");
+        mqtt_client_cleanup(g_config->mqtt_ctx);
+        track_manager_cleanup(g_track_manager);
+        return EXIT_FAILURE;
     }
 
     // Main loop

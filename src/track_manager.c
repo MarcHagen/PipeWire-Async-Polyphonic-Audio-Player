@@ -563,7 +563,7 @@ void track_manager_print_status(track_manager_ctx_t *ctx) {
 
     printf("Active tracks: %d/%d\n", ctx->active_tracks, MAX_TRACKS);
     for (int i = 0; i < ctx->active_tracks; i++) {
-        track_instance_t *track = &ctx->tracks[i];
+        const track_instance_t *track = &ctx->tracks[i];
         const char *state_str;
         switch (track->state) {
             case TRACK_STATE_PLAYING:

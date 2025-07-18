@@ -29,7 +29,7 @@ TOOL_SRCS = $(wildcard $(TOOLS_DIR)/*.c)
 TOOL_BINS = $(TOOL_SRCS:$(TOOLS_DIR)/%.c=$(BIN_DIR)/%)
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 DEPS = $(OBJS:.o=.d)
-TARGET = $(BIN_DIR)/async-audio-player
+TARGET = $(BIN_DIR)/async-multichannel-audio-player
 
 # Phony targets
 .PHONY: all clean directories install uninstall debug release help
