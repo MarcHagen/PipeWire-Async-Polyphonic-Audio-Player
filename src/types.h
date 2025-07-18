@@ -72,17 +72,13 @@ typedef struct {
     } logging;
 
     struct {
-        bool enabled;
-        char *broker;
+        char *host;
+        int port;
         char *client_id;
         char *username;
         char *password;
         char *topic_prefix;
     } mqtt;
-
-    struct {
-        int sample_rate;
-    } audio;
 
     track_config_t *tracks;
     int track_count;

@@ -5,15 +5,12 @@ logging:
   level: INFO
 
 mqtt:
-  enabled: false
-  broker: "tcp://localhost:1883"
+  host: "host"
+  port: 1883
   client_id: "async-audio-player"
   username: ""
   password: ""
   topic_prefix: "async-audio-player"
-
-audio:
-  sample_rate: 48000
 
 # Example tracks configuration
 tracks:

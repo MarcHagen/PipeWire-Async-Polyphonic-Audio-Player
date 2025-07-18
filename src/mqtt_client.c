@@ -4,8 +4,7 @@
 #include "log.h"
 
 #define MQTT_KEEPALIVE 60
-#define MQTT_QOS 1
-#define MQTT_RETAIN false
+#define MQTT_QOS 2
 
 struct mqtt_client_ctx {
     struct mosquitto *mosq;
@@ -19,7 +18,7 @@ struct mqtt_client_ctx {
 };
 
 static void on_connect(struct mosquitto *mosq, void *obj, int rc) {
-    mqtt_client_ctx_t *ctx = (mqtt_client_ctx_t *)obj;
+    mqtt_client_ctx_t *ctx = (mqtt_client_ctx_t *) obj;
 
     if (rc == 0) {
         log_info("Connected to MQTT broker");
@@ -45,10 +44,12 @@ static void on_connect(struct mosquitto *mosq, void *obj, int rc) {
     }
 }
 
-static void on_disconnect(struct mosquitto *mosq __attribute__((unused)),
-                        void *obj,
-                        int rc __attribute__((unused))) {
-    mqtt_client_ctx_t *ctx = (mqtt_client_ctx_t *)obj;
+static void on_disconnect(
+    struct mosquitto *mosq __attribute__((unused)),
+    void *obj,
+    int rc __attribute__((unused))
+) {
+    mqtt_client_ctx_t *ctx = (mqtt_client_ctx_t *) obj;
     log_warn("Disconnected from MQTT broker");
     ctx->connected = false;
     if (ctx->connection_cb) {
@@ -56,10 +57,8 @@ static void on_disconnect(struct mosquitto *mosq __attribute__((unused)),
     }
 }
 
-static void on_message(struct mosquitto *mosq __attribute__((unused)),
-                      void *obj,
-                      const struct mosquitto_message *msg) {
-    mqtt_client_ctx_t *ctx = (mqtt_client_ctx_t *)obj;
+static void on_message(struct mosquitto *mosq __attribute__((unused)), void *obj, const struct mosquitto_message *msg) {
+    const mqtt_client_ctx_t *ctx = (mqtt_client_ctx_t *) obj;
 
     // Extract track_id from topic
     const char *prefix_end = strstr(msg->topic, ctx->config->mqtt.topic_prefix);
@@ -70,24 +69,22 @@ static void on_message(struct mosquitto *mosq __attribute__((unused)),
     if (!command_start) return;
 
     char track_id[128] = {0};
-    size_t track_id_len = command_start - prefix_end;
+    const size_t track_id_len = command_start - prefix_end;
     if (track_id_len >= sizeof(track_id)) return;
     strncpy(track_id, prefix_end, track_id_len);
 
     // Handle command
     if (ctx->command_cb) {
-        ctx->command_cb(track_id, (const char *)msg->payload, ctx->userdata);
+        ctx->command_cb(track_id, (const char *) msg->payload, ctx->userdata);
     }
 }
 
-mqtt_client_ctx_t* mqtt_client_init(global_config_t *config,
-                                  mqtt_command_callback_t command_cb,
-                                  mqtt_connection_callback_t connection_cb,
-                                  void *userdata) {
-    if (!config->mqtt.enabled) {
-        return NULL;
-    }
-
+mqtt_client_ctx_t *mqtt_client_init(
+    global_config_t *config,
+    const mqtt_command_callback_t command_cb,
+    const mqtt_connection_callback_t connection_cb,
+    void *userdata
+) {
     mqtt_client_ctx_t *ctx = calloc(1, sizeof(mqtt_client_ctx_t));
     if (!ctx) {
         log_error("Failed to allocate MQTT context");
@@ -130,9 +127,11 @@ mqtt_client_ctx_t* mqtt_client_init(global_config_t *config,
 
     // Set up credentials if provided
     if (config->mqtt.username && config->mqtt.password) {
-        mosquitto_username_pw_set(ctx->mosq, 
-                                config->mqtt.username,
-                                config->mqtt.password);
+        mosquitto_username_pw_set(
+            ctx->mosq,
+            config->mqtt.username,
+            config->mqtt.password
+        );
     }
 
     return ctx;
@@ -142,10 +141,12 @@ bool mqtt_client_start(mqtt_client_ctx_t *ctx) {
     if (!ctx) return false;
 
     // Connect to broker
-    int rc = mosquitto_connect(ctx->mosq, 
-                             ctx->config->mqtt.broker,
-                             1883, // Default MQTT port
-                             MQTT_KEEPALIVE);
+    int rc = mosquitto_connect(
+        ctx->mosq,
+        ctx->config->mqtt.host,
+        ctx->config->mqtt.port,
+        MQTT_KEEPALIVE
+    );
 
     if (rc != MOSQ_ERR_SUCCESS) {
         log_error("Failed to connect to MQTT broker: %s", mosquitto_strerror(rc));
@@ -176,8 +177,13 @@ void mqtt_client_publish_status(mqtt_client_ctx_t *ctx, const char *track_id, bo
     if (!ctx || !ctx->connected || !track_id) return;
 
     char topic[256];
-    snprintf(topic, sizeof(topic), "%s/%s/status",
-             ctx->config->mqtt.topic_prefix, track_id);
+    snprintf(
+        topic,
+        sizeof(topic),
+        "%s/%s/status",
+        ctx->config->mqtt.topic_prefix,
+        track_id
+    );
 
     const char *status = playing ? "playing" : "stopped";
     mosquitto_publish(ctx->mosq, NULL, topic, strlen(status), status, MQTT_QOS, false);
