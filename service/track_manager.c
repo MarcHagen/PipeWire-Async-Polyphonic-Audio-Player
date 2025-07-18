@@ -259,7 +259,7 @@ static bool init_track_pipewire(
     // Add device target if specified
     if (track->config->output.device)
     {
-        if (pw_properties_set(props, PW_KEY_NODE_TARGET, track->config->output.device) != 0)
+        if (pw_properties_set(props, PW_KEY_TARGET_OBJECT, track->config->output.device) != 0)
         {
             log_error("Failed to set target device property");
             goto cleanup;

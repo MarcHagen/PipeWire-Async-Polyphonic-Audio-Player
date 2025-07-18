@@ -47,15 +47,19 @@ directories:
 $(OBJ_DIR)/%.o: $(SERIVCE_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+$(OBJ_DIR)/%.o: $(CLIENT_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 # Build service
-$(SERVICE_BIN): SERVICE_OBJS
+$(SERVICE_BIN): $(SERVICE_OBJS)
 	$(CC) $(SERVICE_OBJS) -o $(SERVICE_BIN) $(LDFLAGS)
 	@echo "Build complete: $(SERVICE_BIN)"
 
-# Build client
-$(CLIENT_BIN): $(CLIENT_SRCS)
-	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+# Build service
+$(CLIENT_BIN): $(CLIENT_OBJS)
+	$(CC) $(CLIENT_OBJS) -o $(CLIENT_BIN) $(LDFLAGS)
+	@echo "Build complete: $(CLIENT_BIN)"
 
 # Debug build
 debug: OPTIM_FLAGS = -O0
