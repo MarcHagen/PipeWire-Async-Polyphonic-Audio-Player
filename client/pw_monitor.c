@@ -15,23 +15,26 @@ struct data
     bool done;
 };
 
-static void print_node_info(struct pw_node_info* info, const char* name, const char* class)
+static void print_node_info(struct pw_node_info* info)
 {
     const char* description = NULL;
+    const char* class = NULL;
+    const char* name = NULL;
+    const char* object_id = NULL;
     if (info->props)
     {
         description = spa_dict_lookup(info->props, PW_KEY_NODE_DESCRIPTION);
+        class = spa_dict_lookup(info->props, PW_KEY_MEDIA_CLASS);
+        name = spa_dict_lookup(info->props, PW_KEY_NODE_NAME);
+        object_id = spa_dict_lookup(info->props, PW_KEY_OBJECT_ID);
     }
 
-    // Only print audio sinks and sources
-    if (strstr(class, "Audio/") == class)
-    {
-        printf("ID: %-5u | %-20s | %-30s | %s\n",
-               info->id,
-               class + 6, // Skip "Audio/" prefix
-               name ? name : "Unknown",
-               description ? description : "No description");
-    }
+    printf("ID: %-5u | %-20s | %-20s | %-30s | %s\n",
+           info->id,
+           class + 6, // Skip "Audio/" prefix
+           name ? name : "Unknown",
+           object_id ? object_id : "Unknown",
+           description ? description : "No description");
 }
 
 static void registry_event_global(void* data,
@@ -41,25 +44,17 @@ static void registry_event_global(void* data,
                                   uint32_t version,
                                   const struct spa_dict* props)
 {
-    const char* class;
-    const char* name;
-
     if (!props || strcmp(type, PW_TYPE_INTERFACE_Node) != 0)
         return;
 
-    class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
-    name = spa_dict_lookup(props, PW_KEY_NODE_NAME);
-
+    const char* class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
     if (!class)
         return;
 
-    if (strstr(class, "Audio/") == class)
-    {
-        struct pw_node_info info = {0};
-        info.id = id;
-        info.props = props;
-        print_node_info(&info, name, class);
-    }
+    struct pw_node_info info = {0};
+    info.id = id;
+    info.props = props;
+    print_node_info(&info);
 }
 
 static const struct pw_registry_events registry_events = {
@@ -118,7 +113,7 @@ void list_audio_devices(void)
 
     printf("\nAvailable PipeWire Audio Devices:\n");
     printf("-----------------------------------\n");
-    printf("ID     | Type                | Name                           | Description\n");
+    printf("ID     | Type                | Object ID                | Name                           | Description\n");
     printf("--------------------------------------------------------------------------------\n");
 
     pw_main_loop_run(data.loop);
