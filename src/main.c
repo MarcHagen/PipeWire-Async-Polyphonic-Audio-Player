@@ -13,6 +13,7 @@
 
 // Forward declarations for MQTT callbacks
 static void handle_mqtt_command(const char *track_id, const char *command, void *userdata);
+
 static void handle_mqtt_connection(bool connected, void *userdata);
 
 // Configuration file search paths
@@ -24,7 +25,7 @@ static const char *CONFIG_PATHS[] = {
 };
 
 // Find existing configuration file
-static const char* find_config_file(void) {
+static const char *find_config_file(void) {
     for (const char **path = CONFIG_PATHS; *path != NULL; path++) {
         if (access(*path, R_OK) == 0) {
             return *path;
@@ -38,7 +39,7 @@ static global_config_t *g_config = NULL;
 static track_manager_ctx_t *g_track_manager = NULL;
 // MQTT command handler
 static void handle_mqtt_command(const char *track_id, const char *command, void *userdata) {
-    track_manager_ctx_t *track_manager = (track_manager_ctx_t *)userdata;
+    track_manager_ctx_t *track_manager = (track_manager_ctx_t *) userdata;
 
     if (strcmp(command, "play") == 0) {
         track_manager_play(track_manager, track_id);
@@ -46,11 +47,13 @@ static void handle_mqtt_command(const char *track_id, const char *command, void 
         track_manager_stop(track_manager, track_id);
     } else if (strcmp(command, "stopall") == 0) {
         track_manager_stop_all(track_manager);
+    } else {
+        log_warn("MQTT command unknown: %s", command);
     }
 }
 
 // MQTT connection handler
-static void handle_mqtt_connection(bool connected, void *userdata __attribute__((unused))) {
+static void handle_mqtt_connection(const bool connected, void *userdata __attribute__((unused))) {
     if (connected) {
         log_info("MQTT connection established");
     } else {
@@ -60,9 +63,10 @@ static void handle_mqtt_connection(bool connected, void *userdata __attribute__(
 
 
 // Program entry point
-int main(int argc, char *argv[]) {
+int main(const int argc, char *argv[]) {
     // Parse command line arguments
-    cli_args_t args = cli_parse_args(argc, argv);
+    const cli_args_t args = cli_parse_args(argc, argv);
+    int returnInt = EXIT_SUCCESS;
 
     // Handle help command early
     if (args.command == CMD_HELP) {
@@ -114,33 +118,31 @@ int main(int argc, char *argv[]) {
     g_track_manager = track_manager_init(g_config);
     if (!g_track_manager) {
         log_error("Failed to initialize track manager");
+        returnInt = EXIT_FAILURE;
+        goto cleanup;
+    }
+
+    g_config->mqtt_ctx = mqtt_client_init(
+        g_config,
+        // Command callback
+        (mqtt_command_callback_t) handle_mqtt_command,
+        // Connection callback
+        (mqtt_connection_callback_t) handle_mqtt_connection,
+        g_track_manager
+    );
+
+    if (!g_config->mqtt_ctx) {
+        log_error("Failed to initialize MQTT client");
+        track_manager_cleanup(g_track_manager);
         config_free(g_config);
         return EXIT_FAILURE;
     }
 
-    // Initialize MQTT if enabled
-    if (g_config->mqtt.enabled) {
-        g_config->mqtt_ctx = mqtt_client_init(g_config,
-            // Command callback
-            (mqtt_command_callback_t)handle_mqtt_command,
-            // Connection callback
-            (mqtt_connection_callback_t)handle_mqtt_connection,
-            g_track_manager);
-
-        if (!g_config->mqtt_ctx) {
-            log_error("Failed to initialize MQTT client");
-            track_manager_cleanup(g_track_manager);
-            config_free(g_config);
-            return EXIT_FAILURE;
-        }
-
-        if (!mqtt_client_start(g_config->mqtt_ctx)) {
-            log_error("Failed to start MQTT client");
-            mqtt_client_cleanup(g_config->mqtt_ctx);
-            track_manager_cleanup(g_track_manager);
-            config_free(g_config);
-            return EXIT_FAILURE;
-        }
+    if (!mqtt_client_start(g_config->mqtt_ctx)) {
+        log_error("Failed to start MQTT client");
+        mqtt_client_cleanup(g_config->mqtt_ctx);
+        track_manager_cleanup(g_track_manager);
+        return EXIT_FAILURE;
     }
 
     log_info("Initialization complete");
@@ -152,7 +154,7 @@ int main(int argc, char *argv[]) {
             break;
         case CMD_HELP:
             cli_print_help(argv[0]);
-            return EXIT_SUCCESS;
+            goto cleanup;
         case CMD_LIST:
             track_manager_list_tracks(g_track_manager);
             break;
@@ -160,6 +162,8 @@ int main(int argc, char *argv[]) {
             if (args.track_id) {
                 if (!track_manager_play(g_track_manager, args.track_id)) {
                     log_error("Failed to play track: %s", args.track_id);
+                    returnInt = EXIT_FAILURE;
+                    goto cleanup;
                 }
             }
             break;
@@ -167,46 +171,62 @@ int main(int argc, char *argv[]) {
             if (args.track_id) {
                 if (!track_manager_stop(g_track_manager, args.track_id)) {
                     log_error("Failed to stop track: %s", args.track_id);
+                    returnInt = EXIT_FAILURE;
+                    goto cleanup;
                 }
             }
             break;
-        case CMD_STOPALL:
+        case CMD_STOP_ALL:
             if (!track_manager_stop_all(g_track_manager)) {
                 log_error("Failed to stop all tracks");
+                returnInt = EXIT_FAILURE;
+                goto cleanup;
             }
             break;
-        case CMD_RELOAD:
-            {
-                const char *reload_path = find_config_file();
-                if (!reload_path) {
-                    log_error("Configuration file not found for reload");
-                    break;
-                }
+        case CMD_RELOAD: {
+            const char *reload_path = find_config_file();
+            if (!reload_path) {
+                log_error("Configuration file not found for reload");
+                returnInt = EXIT_FAILURE;
+                goto cleanup;
+            }
 
-                global_config_t *new_config = config_reload(reload_path);
-                if (new_config) {
-                    track_manager_stop_all(g_track_manager);
-                    track_manager_cleanup(g_track_manager);
-                    config_free(g_config);
-                    g_config = new_config;
-                    g_track_manager = track_manager_init(g_config);
-                    if (!g_track_manager) {
-                        log_error("Failed to reinitialize track manager");
-                        config_free(g_config);
-                        return EXIT_FAILURE;
-                    }
-                    log_info("Configuration reloaded successfully");
-                } else {
-                    log_error("Failed to reload configuration");
+            global_config_t *new_config = config_reload(reload_path);
+            if (new_config) {
+                track_manager_stop_all(g_track_manager);
+                track_manager_cleanup(g_track_manager);
+                config_free(g_config);
+                g_config = new_config;
+                g_track_manager = track_manager_init(g_config);
+                if (!g_track_manager) {
+                    log_error("Failed to reinitialize track manager");
+                    returnInt = EXIT_FAILURE;
+                    goto cleanup;
                 }
+                log_info("Configuration reloaded successfully");
+            } else {
+                log_error("Failed to reload configuration");
+                returnInt = EXIT_FAILURE;
+                goto cleanup;
             }
-            break;
+        }
+        break;
         case CMD_STATUS:
             track_manager_print_status(g_track_manager);
             break;
         case CMD_TEST:
-            if (!track_manager_play_test_tone(g_track_manager)) {
+            // Validate required arguments
+            if (!args.channels) {
+                log_error("--test requires --channels argument");
+                log_error("Usage: --test --channels <FL,FR,...>");
+                returnInt = EXIT_FAILURE;
+                goto cleanup;
+            }
+
+            if (!track_manager_play_test_tone(g_track_manager, args.channels)) {
                 log_error("Failed to play test tone");
+                returnInt = EXIT_FAILURE;
+                goto cleanup;
             }
             break;
     }
@@ -214,7 +234,7 @@ int main(int argc, char *argv[]) {
     // Main loop
     bool running = true;
     while (running) {
-        signal_state_t sig_state = signal_handler_get_state();
+        const signal_state_t sig_state = signal_handler_get_state();
 
         switch (sig_state) {
             case SIGNAL_SHUTDOWN:
@@ -257,15 +277,20 @@ int main(int argc, char *argv[]) {
 
             case SIGNAL_NONE:
             default:
-                usleep(100000); // 100ms sleep to prevent busy loop
+                usleep(100000); // 100 ms sleep to prevent heavy loop
                 break;
         }
     }
 
-    // Cleanup
+    returnInt = EXIT_SUCCESS;
     log_info("Shutting down...");
+
+cleanup:
     if (args.track_id) {
         free(args.track_id);
+    }
+    if (args.channels) {
+        free(args.channels);
     }
     if (args.working_dir) {
         free(args.working_dir);
@@ -282,5 +307,5 @@ int main(int argc, char *argv[]) {
     }
 
     signal_handler_cleanup();
-    return EXIT_SUCCESS;
+    return returnInt;
 }

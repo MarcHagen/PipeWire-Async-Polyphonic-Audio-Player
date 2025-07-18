@@ -9,7 +9,7 @@ typedef enum {
     CMD_LIST,
     CMD_PLAY,
     CMD_STOP,
-    CMD_STOPALL,
+    CMD_STOP_ALL,
     CMD_RELOAD,
     CMD_STATUS,
     CMD_TEST,
@@ -20,8 +20,9 @@ typedef enum {
 typedef struct {
     cli_command_t command;
     char *track_id;
-    bool daemon;              // Run in daemon mode
-    char *working_dir;        // Working directory for daemon
+    char *channels; // Channel mapping for test tone
+    bool daemon; // Run in daemon mode
+    char *working_dir; // Working directory for daemon
 } cli_args_t;
 
 // Parse command line arguments
