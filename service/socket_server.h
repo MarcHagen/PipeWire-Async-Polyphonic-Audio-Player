@@ -11,7 +11,7 @@ typedef struct {
     pthread_t thread;
     int server_fd;
     bool running;
-    char socket_path[256];  // Added to store the actual path
+    char socket_path[256];
 } socket_server_ctx_t;
 
 // Get the socket path for the current user

@@ -205,7 +205,7 @@ char* get_socket_path(char* buffer, size_t size)
     snprintf(dir_path, sizeof(dir_path), "/var/run/user/%d/papa", (int)getuid());
 
     // Construct the socket path
-    snprintf(buffer, size, "%s/papa.sock", dir_path);
+    snprintf(buffer, size, "%s/papad.sock", dir_path);
     return buffer;
 }
 

@@ -7,7 +7,6 @@
 #include <getopt.h>
 
 // Socket path definition
-#define SOCKET_PATH "/var/run/papad.sock"
 #define BUFFER_SIZE 1024
 
 // Command line options
@@ -36,11 +35,32 @@ static void print_help(const char *program_name) {
     printf("  --help                Show this help message\n");
 }
 
+// Get the socket path for the current user
+static char* get_socket_path(char* buffer, size_t size)
+{
+    if (!buffer || size == 0)
+    {
+        return NULL;
+    }
+
+    // Ensure the runtime directory exists
+    char dir_path[256];
+    snprintf(dir_path, sizeof(dir_path), "/var/run/user/%d/papa", (int)getuid());
+
+    // Construct the socket path
+    snprintf(buffer, size, "%s/papad.sock", dir_path);
+    return buffer;
+}
+
+
 // Send command to socket server
 static int send_command(const char *command) {
     int sock;
     struct sockaddr_un addr;
     char buffer[BUFFER_SIZE];
+
+    char socket_path[256];
+    get_socket_path(socket_path, sizeof(socket_path));
 
     // Create socket
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -52,7 +72,7 @@ static int send_command(const char *command) {
     // Setup address structure
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+    strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path) - 1);
 
     // Connect to server
     if (connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) < 0) {
