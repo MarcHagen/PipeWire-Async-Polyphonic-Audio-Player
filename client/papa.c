@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <getopt.h>
+#include "pw_monitor.h"
 
 // Socket path definition
 #define BUFFER_SIZE 1024
@@ -18,6 +19,7 @@ static struct option long_options[] = {
     {"reload", no_argument, 0, 'r'},
     {"status", no_argument, 0, 't'},
     {"help", no_argument, 0, 'h'},
+    {"list-devices", no_argument, 0, 'd'},
     {0, 0, 0, 0}
 };
 
@@ -32,6 +34,7 @@ static void print_help(const char *program_name) {
     printf("  --stop-all            Stop all tracks\n");
     printf("  --reload              Reload configuration\n");
     printf("  --status              Show current status\n");
+    printf("  --list-devices        List available PipeWire audio devices\n");
     printf("  --help                Show this help message\n");
 }
 
@@ -144,6 +147,9 @@ int main(int argc, char *argv[]) {
             case '?':
                 print_help(argv[0]);
                 return EXIT_FAILURE;
+            case 'd':
+                list_audio_devices();
+                return EXIT_SUCCESS;
         }
     }
 

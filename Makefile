@@ -24,10 +24,11 @@ LDFLAGS = $(shell pkg-config --libs libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile)
 # Source and object files
 SERVICE_SRCS = $(wildcard $(SERIVCE_DIR)/*.c)
 SERVICE_BIN = $(BIN_DIR)/papad
+SERVICE_OBJS = $(SERVICE_SRCS:$(SERIVCE_DIR)/%.c=$(OBJ_DIR)/%.o)
 CLIENT_SRCS = $(wildcard $(CLIENT_DIR)/*.c)
 CLIENT_BIN = $(BIN_DIR)/papa
-OBJS = $(SERVICE_SRCS:$(SERIVCE_DIR)/%.c=$(OBJ_DIR)/%.o)
-DEPS = $(OBJS:.o=.d)
+CLIENT_OBJS = $(CLIENT_SRCS:$(CLIENT_DIR)/%.c=$(OBJ_DIR)/%.o)
+DEPS = $(SERVICE_OBJS:.o=.d) $(CLIENT_OBJS:.o=.d)
 
 # Phony targets
 .PHONY: all clean directories install uninstall debug release help
@@ -48,8 +49,8 @@ $(OBJ_DIR)/%.o: $(SERIVCE_DIR)/%.c
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 # Build service
-$(SERVICE_BIN): $(OBJS)
-	$(CC) $(OBJS) -o $(SERVICE_BIN) $(LDFLAGS)
+$(SERVICE_BIN): SERVICE_OBJS
+	$(CC) $(SERVICE_OBJS) -o $(SERVICE_BIN) $(LDFLAGS)
 	@echo "Build complete: $(SERVICE_BIN)"
 
 # Build client
