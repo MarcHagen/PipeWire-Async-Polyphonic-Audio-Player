@@ -52,7 +52,7 @@ $(SERVICE_BIN): $(OBJS)
 	@echo "Build complete: $(SERVICE_BIN)"
 
 # Build client
-$(CLIENT_BIN): $(CLIENT_DIR)/%.c
+$(CLIENT_BIN): $(CLIENT_SRCS)
 	$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 # Debug build
