@@ -113,4 +113,4 @@ You can control PAPA programmatically by sending commands to the Unix socket:
 
 ## License
 
-MIT
+[Apache-2.0 license](LICENSE)
