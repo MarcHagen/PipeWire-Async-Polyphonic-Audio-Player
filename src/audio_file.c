@@ -5,7 +5,7 @@
 
 #define BUFFER_FRAMES 4096
 
-audio_file_t* audio_file_open(const char *path, bool loop, float volume) {
+audio_file_t *audio_file_open(const char *path, const bool loop, const float volume) {
     audio_file_t *af = calloc(1, sizeof(audio_file_t));
     if (!af) {
         log_error("Failed to allocate audio file structure");
@@ -37,13 +37,13 @@ audio_file_t* audio_file_open(const char *path, bool loop, float volume) {
     af->volume = volume;
     af->position = 0;
 
-    log_info("Opened audio file: %s (channels: %d, rate: %d)", 
+    log_info("Opened audio file: %s (channels: %d, rate: %d)",
              path, af->info.channels, af->info.samplerate);
 
     return af;
 }
 
-size_t audio_file_read(audio_file_t *af, float *output, size_t frames) {
+size_t audio_file_read(audio_file_t *af, float *output, const size_t frames) {
     if (!af || !output) return 0;
 
     size_t frames_read = sf_readf_float(af->file, output, frames);
@@ -58,10 +58,8 @@ size_t audio_file_read(audio_file_t *af, float *output, size_t frames) {
     // Handle looping
     if (frames_read < frames && af->loop) {
         sf_seek(af->file, 0, SEEK_SET);
-        size_t remaining = frames - frames_read;
-        size_t additional = sf_readf_float(af->file, 
-                                         output + (frames_read * af->info.channels),
-                                         remaining);
+        const size_t remaining = frames - frames_read;
+        const size_t additional = sf_readf_float(af->file, output + (frames_read * af->info.channels), remaining);
         frames_read += additional;
     }
 
@@ -69,10 +67,10 @@ size_t audio_file_read(audio_file_t *af, float *output, size_t frames) {
     return frames_read;
 }
 
-bool audio_file_seek(audio_file_t *af, sf_count_t position) {
+bool audio_file_seek(audio_file_t *af, const sf_count_t position) {
     if (!af) return false;
 
-    sf_count_t result = sf_seek(af->file, position, SEEK_SET);
+    const sf_count_t result = sf_seek(af->file, position, SEEK_SET);
     if (result < 0) {
         log_error("Failed to seek in audio file: %s", sf_strerror(af->file));
         return false;
