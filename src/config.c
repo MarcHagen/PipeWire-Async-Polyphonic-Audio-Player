@@ -18,30 +18,6 @@ static void parse_logging(yaml_document_t *doc, const yaml_node_t *node, global_
     }
 }
 
-static void parse_mqtt(yaml_document_t *doc, const yaml_node_t *node, global_config_t *config) {
-    if (node->type != YAML_MAPPING_NODE) return;
-
-    for (const yaml_node_pair_t *pair = node->data.mapping.pairs.start; pair < node->data.mapping.pairs.top; pair++) {
-        const yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-        const yaml_node_t *value = yaml_document_get_node(doc, pair->value);
-
-        if (strcmp((char *) key->data.scalar.value, "enabled") == 0) {
-        } else if (strcmp((char *) key->data.scalar.value, "host") == 0) {
-            config->mqtt.host = strdup((char *) value->data.scalar.value);
-        } else if (strcmp((char *) key->data.scalar.value, "port") == 0) {
-            config->mqtt.port = atoi((char *) value->data.scalar.value);
-        } else if (strcmp((char *) key->data.scalar.value, "client_id") == 0) {
-            config->mqtt.client_id = strdup((char *) value->data.scalar.value);
-        } else if (strcmp((char *) key->data.scalar.value, "username") == 0) {
-            config->mqtt.username = strdup((char *) value->data.scalar.value);
-        } else if (strcmp((char *) key->data.scalar.value, "password") == 0) {
-            config->mqtt.password = strdup((char *) value->data.scalar.value);
-        } else if (strcmp((char *) key->data.scalar.value, "topic_prefix") == 0) {
-            config->mqtt.topic_prefix = strdup((char *) value->data.scalar.value);
-        }
-    }
-}
-
 static void parse_track_output(yaml_document_t *doc, const yaml_node_t *node, output_config_t *output) {
     if (node->type != YAML_MAPPING_NODE) return;
 
@@ -133,8 +109,6 @@ global_config_t *config_load(const char *filename) {
 
             if (strcmp((char *) key->data.scalar.value, "logging") == 0) {
                 parse_logging(&document, value, config);
-            } else if (strcmp((char *) key->data.scalar.value, "mqtt") == 0) {
-                parse_mqtt(&document, value, config);
             } else if (strcmp((char *) key->data.scalar.value, "tracks") == 0) {
                 parse_tracks(&document, value, config);
             }
@@ -153,17 +127,6 @@ void config_free(global_config_t *config) {
 
     // Free logging config
     free(config->logging.level);
-
-    // Free MQTT config
-    if (config->mqtt_ctx) {
-        mqtt_client_cleanup(config->mqtt_ctx);
-        config->mqtt_ctx = NULL;
-    }
-    free(config->mqtt.host);
-    free(config->mqtt.client_id);
-    free(config->mqtt.username);
-    free(config->mqtt.password);
-    free(config->mqtt.topic_prefix);
 
     // Free tracks
     for (int i = 0; i < config->track_count; i++) {

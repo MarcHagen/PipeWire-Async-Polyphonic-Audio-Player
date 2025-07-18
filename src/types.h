@@ -71,18 +71,8 @@ typedef struct {
         char *level;
     } logging;
 
-    struct {
-        char *host;
-        int port;
-        char *client_id;
-        char *username;
-        char *password;
-        char *topic_prefix;
-    } mqtt;
-
     track_config_t *tracks;
     int track_count;
-    struct mqtt_client_ctx *mqtt_ctx;  // MQTT context for status updates
 } global_config_t;
 
 #endif // ASYNC_AUDIO_PLAYER_TYPES_H

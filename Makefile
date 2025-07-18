@@ -15,13 +15,10 @@ WARN_FLAGS = -Wall -Wextra -Wpedantic -Wformat=2 -Wno-unused-parameter \
              -Wshadow -Wwrite-strings -Wstrict-prototypes -Wold-style-definition \
              -Wredundant-decls -Wnested-externs -Wmissing-include-dirs
 
-CFLAGS = $(WARN_FLAGS) $(OPTIM_FLAGS) $(DEBUG_FLAGS) \
-         -I./$(SRC_DIR) \
-         -DVERSION=\"$(VERSION)\" \
-         $(shell pkg-config --cflags libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile libmosquitto)
+CFLAGS = $(WARN_FLAGS) $(OPTIM_FLAGS) $(DEBUG_FLAGS) -I./$(SRC_DIR) -DVERSION=\"$(VERSION)\" \
+         $(shell pkg-config --cflags libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile)
 
-LDFLAGS = $(shell pkg-config --libs libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile libmosquitto) \
-          -lpthread -lm
+LDFLAGS = $(shell pkg-config --libs libpipewire-0.3 libspa-0.2 yaml-0.1 sndfile) -lpthread -lm
 
 # Source and object files
 SRCS = $(wildcard $(SRC_DIR)/*.c)
