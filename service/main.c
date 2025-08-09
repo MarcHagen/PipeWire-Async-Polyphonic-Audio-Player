@@ -98,7 +98,6 @@ int main(const int argc, char *argv[]) {
     int returnInt = EXIT_SUCCESS;
 
     // Initialize logging
-    log_set_level("INFO");
     log_info("PAPA - PipeWire Async Polyphonic Audio Player starting...");
 
     // Print help if requested
@@ -157,6 +156,10 @@ int main(const int argc, char *argv[]) {
     }
 
     // Initialize socket server
+    if (g_socket_server) {
+        log_error("Socket server is already initialized!");
+        return EXIT_FAILURE; // Or appropriate error handling
+    }
     g_socket_server = socket_server_init(g_track_manager);
     if (!g_socket_server) {
         log_error("Failed to initialize socket server");

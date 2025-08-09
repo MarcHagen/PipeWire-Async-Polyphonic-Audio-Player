@@ -8,7 +8,7 @@ services:
       - ./config/default.yml:/app/config.yml:ro
       - ./config/media:/app/media:ro
       # If the client communicates with the service via a shared Unix socket, mount the same volume
-      - papad-run:/var/run/user/1001/papa/papad.sock
+      - papad-run:/var/run/user/1001/papa
 
   client:
     image: marchagen/papa:latest
@@ -20,7 +20,7 @@ services:
     restart: "no"
     # If the client communicates with the service via a shared Unix socket, mount the same volume
     volumes:
-      - papad-run:/var/run/user/1000/papad
+      - papad-run:/var/run/user/1001/papa
 
 volumes:
   papad-run:

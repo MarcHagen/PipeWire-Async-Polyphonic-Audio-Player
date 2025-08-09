@@ -136,6 +136,8 @@ static void *socket_server_thread(void *arg) {
     char buffer[1024];
     char response[1024];
 
+    static int thread_launch_count = 0;
+    log_debug("Socket server thread started (%d)", ++thread_launch_count);
     log_info("Socket server thread started");
 
     while (ctx->running) {
@@ -146,7 +148,7 @@ static void *socket_server_thread(void *arg) {
 
         if (client_fd < 0) {
             if (ctx->running) {
-                log_error("Socket accept failed");
+                log_error("Socket accept failed: %s", strerror(errno));
             }
             continue;
         }
@@ -277,7 +279,9 @@ socket_server_ctx_t *socket_server_init(track_manager_ctx_t *track_manager) {
     ctx->server_fd = -1;
 
     // Remove socket if it already exists
-    unlink(ctx->socket_path);
+    if (unlink(ctx->socket_path) < 0 && errno != ENOENT) {
+        log_warn("Could not remove existing socket path %s: %s", ctx->socket_path, strerror(errno));
+    }
 
     // Create socket
     ctx->server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -293,9 +297,11 @@ socket_server_ctx_t *socket_server_init(track_manager_ctx_t *track_manager) {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, ctx->socket_path, sizeof(addr.sun_path) - 1);
 
+    log_debug("Binding Unix socket at %s", ctx->socket_path);
     // Bind socket
     if (bind(ctx->server_fd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) < 0) {
-        log_error("Socket bind failed");
+        int err = errno;
+        log_error("Socket bind failed at %s: %s", ctx->socket_path, strerror(err));
         close(ctx->server_fd);
         free(ctx);
         return NULL;
@@ -310,7 +316,8 @@ socket_server_ctx_t *socket_server_init(track_manager_ctx_t *track_manager) {
 
     // Listen for connections
     if (listen(ctx->server_fd, 5) < 0) {
-        log_error("Socket listen failed");
+        int err = errno;
+        log_error("Socket listen failed at %s: %s", ctx->socket_path, strerror(err));
         close(ctx->server_fd);
         free(ctx);
         return NULL;
@@ -323,6 +330,11 @@ socket_server_ctx_t *socket_server_init(track_manager_ctx_t *track_manager) {
 // Start socket server thread
 bool socket_server_start(socket_server_ctx_t *ctx) {
     if (!ctx) return false;
+
+    if (ctx->running) {  // Prevent double start
+        log_warn("Socket server is already running.");
+        return false;
+    }
 
     ctx->running = true;
     if (pthread_create(&ctx->thread, NULL, socket_server_thread, ctx) != 0) {
@@ -338,32 +350,36 @@ bool socket_server_start(socket_server_ctx_t *ctx) {
 void socket_server_cleanup(socket_server_ctx_t *ctx) {
     if (!ctx) return;
 
-    // Signal thread to stop
-    ctx->running = false;
+    // Signal thread to stop if running
+    if (ctx->running) {
+        ctx->running = false;
 
-    // Wake up accept() by connecting to the socket
-    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock >= 0) {
-        struct sockaddr_un addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sun_family = AF_UNIX;
-        strncpy(addr.sun_path, ctx->socket_path, sizeof(addr.sun_path) - 1);
-        connect(sock, (struct sockaddr *) &addr, sizeof(addr));
-        close(sock);
+        // Wake up blocked 'accept()' by creating a dummy connection
+        int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (sock >= 0) {
+            struct sockaddr_un addr;
+            memset(&addr, 0, sizeof(addr));
+            addr.sun_family = AF_UNIX;
+            strncpy(addr.sun_path, ctx->socket_path, sizeof(addr.sun_path) - 1);
+            connect(sock, (struct sockaddr *) &addr, sizeof(addr));
+            close(sock);
+        }
+
+        if (ctx->thread) {
+            pthread_join(ctx->thread, NULL);
+            ctx->thread = 0; // Prevent reuse
+        }
     }
 
-    // Wait for thread to finish
-    if (ctx->thread) {
-        pthread_join(ctx->thread, NULL);
-    }
-
-    // Close socket and remove file
+    // Close server FD only once
     if (ctx->server_fd >= 0) {
         close(ctx->server_fd);
         ctx->server_fd = -1;
     }
-    unlink(ctx->socket_path);
 
+    // Clean up socket file
+    unlink(ctx->socket_path);
     free(ctx);
+
     log_info("Socket server cleaned up");
 }

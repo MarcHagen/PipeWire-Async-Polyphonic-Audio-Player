@@ -2,7 +2,7 @@
 # Default configuration for PipeWire Async Polyphonic Audio Player
 
 logging:
-  level: INFO
+  level: DEBUG
 
 # Example tracks configuration
 tracks:

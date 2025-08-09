@@ -2,9 +2,11 @@
 #include <stdarg.h>
 #include <time.h>
 #include <string.h>
+#include <pthread.h>
 #include "log.h"
 
 static log_level_t current_level = LOG_INFO;
+pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Convert string log level to enum
 void log_set_level(const char *level) {
@@ -25,19 +27,19 @@ void log_set_level(const char *level) {
 static void log_print(const log_level_t level, const char *level_str, const char *format, va_list args) {
     if (level < current_level) return;
 
+    pthread_mutex_lock(&log_mutex);
     time_t now;
     time(&now);
     char time_buf[26];
     ctime_r(&now, time_buf);
     time_buf[24] = '\0'; // Remove newline
 
-    // Print to stderr for errors, stdout for others
-    FILE *output = (level == LOG_ERROR) ? stderr : stdout;
-
+    FILE *output = stdout;
     fprintf(output, "%s [%s] ", time_buf, level_str);
     vfprintf(output, format, args);
     fprintf(output, "\n");
     fflush(output);
+    pthread_mutex_unlock(&log_mutex);
 }
 
 void log_error(const char *format, ...) {
