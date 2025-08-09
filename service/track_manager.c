@@ -111,8 +111,7 @@ static void on_process(void *userdata) {
     if (dst == NULL)
         return;
 
-    const size_t n_frames =
-            buf->datas[0].maxsize / sizeof(float) / track->audio_file->info.channels;
+    const size_t n_frames = buf->datas[0].maxsize / sizeof(float) / track->audio_file->info.channels;
 
     // Read audio data
     const size_t frames_read = audio_file_read(track->audio_file, dst, n_frames);
@@ -133,10 +132,8 @@ static void on_process(void *userdata) {
     }
 
     buf->datas[0].chunk->offset = 0;
-    buf->datas[0].chunk->stride =
-            track->audio_file->info.channels * sizeof(float);
-    buf->datas[0].chunk->size =
-            n_frames * track->audio_file->info.channels * sizeof(float);
+    buf->datas[0].chunk->stride = track->audio_file->info.channels * sizeof(float);
+    buf->datas[0].chunk->size = n_frames * track->audio_file->info.channels * sizeof(float);
 
     pw_stream_queue_buffer(track->stream, b);
 }
@@ -249,9 +246,6 @@ static bool init_track_pipewire(
         goto cleanup;
     }
 
-    // if different from default, the target is set
-    bool autoconnect = strcmp(track->config->output.device, "none");
-
     // Add a device target if specified
     if (track->config->output.device) {
         if (strcmp(track->config->output.device, "default") != 0) {
@@ -262,34 +256,21 @@ static bool init_track_pipewire(
         }
     }
 
-    if (autoconnect == false)
-        pw_properties_set(props, PW_KEY_NODE_AUTOCONNECT, "false");
-
     // Add channel mapping if specified
     if (track->config->output.mapping_count > 0) {
-        if (pw_properties_set(props, PW_KEY_NODE_CHANNELNAMES, channelNames) != 0) {
-            log_error("Failed to set channel names property");
-            goto cleanup;
-        }
-        if (pw_properties_set(props, PW_KEY_MEDIA_TYPE, "Audio") != 0) {
-            log_error("Failed to set media type property");
-            goto cleanup;
-        }
-        if (pw_properties_setf(props, PW_KEY_AUDIO_CHANNELS, "%d", track->config->output.mapping_count) != 0) {
-            log_error("Failed to set audio channels property");
-            goto cleanup;
-        }
+        pw_properties_set(props, PW_KEY_NODE_CHANNELNAMES, channelNames);
+        pw_properties_set(props, PW_KEY_MEDIA_TYPE, "Audio");
+        pw_properties_setf(props, PW_KEY_AUDIO_CHANNELS, "%d", track->config->output.mapping_count);
     }
 
     // Create stream
-    track->stream =
-            pw_stream_new_simple(
-                    pw_main_loop_get_loop(ctx->pw_loop),
-                    track->config->id,
-                    props,
-                    &stream_events,
-                    track
-            );
+    track->stream = pw_stream_new_simple(
+            pw_main_loop_get_loop(ctx->pw_loop),
+            track->config->id,
+            props,
+            &stream_events,
+            track
+    );
 
     if (!track->stream) {
         log_error("Failed to create stream");
@@ -437,9 +418,7 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
         }
 
         // Map each channel according to configuration
-        for (uint8_t i = 0;
-             i < track->config->output.mapping_count && i < SPA_AUDIO_MAX_CHANNELS;
-             i++) {
+        for (uint8_t i = 0; i < track->config->output.mapping_count && i < SPA_AUDIO_MAX_CHANNELS; i++) {
             const char *port_name = track->config->output.mapping[i];
             audio_info.position[i] = get_channel_position(port_name);
             if (audio_info.position[i] == SPA_AUDIO_CHANNEL_UNKNOWN) {
@@ -450,8 +429,7 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
     } else {
         // If no mapping specified, use sequential AUX channels
         audio_info.channels = track->audio_file->info.channels;
-        for (uint8_t i = 0; i < audio_info.channels && i < SPA_AUDIO_MAX_CHANNELS;
-             i++) {
+        for (uint8_t i = 0; i < audio_info.channels && i < SPA_AUDIO_MAX_CHANNELS; i++) {
             audio_info.position[i] = SPA_AUDIO_CHANNEL_AUX0 + i;
         }
     }
@@ -463,9 +441,7 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
             track->stream,
             PW_DIRECTION_OUTPUT,
             PW_ID_ANY,
-            PW_STREAM_FLAG_AUTOCONNECT |
-            PW_STREAM_FLAG_MAP_BUFFERS |
-            PW_STREAM_FLAG_RT_PROCESS,
+            PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS,
             params,
             1
     ) < 0) {
@@ -723,10 +699,8 @@ static void on_test_tone_process(void *userdata) {
     generate_test_tone(dst, n_frames, track->config->output.mapping_count, 48000);
 
     buf->datas[0].chunk->offset = 0;
-    buf->datas[0].chunk->stride =
-            track->config->output.mapping_count * sizeof(float);
-    buf->datas[0].chunk->size =
-            n_frames * track->config->output.mapping_count * sizeof(float);
+    buf->datas[0].chunk->stride = track->config->output.mapping_count * sizeof(float);
+    buf->datas[0].chunk->size = n_frames * track->config->output.mapping_count * sizeof(float);
 
     pw_stream_queue_buffer(track->stream, b);
 }
