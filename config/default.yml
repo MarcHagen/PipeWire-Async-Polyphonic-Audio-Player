@@ -10,7 +10,7 @@ tracks:
     file_path: "/tmp/test.wav"
     loop: false
     output:
-      device: "default"
+#      device: "usb-interface-sink"
       mapping:
         - "AUX0"
         - "AUX1"
@@ -20,7 +20,7 @@ tracks:
     file_path: "/tmp/test.wav"
     loop: true
     output:
-      device: "default"
+#      device: "usb-interface-sink"
       mapping:
         - "AUX2"
         - "AUX3"

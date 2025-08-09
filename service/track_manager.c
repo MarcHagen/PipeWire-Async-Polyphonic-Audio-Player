@@ -256,15 +256,24 @@ static bool init_track_pipewire(
         goto cleanup;
     }
 
-    // Add device target if specified
+    // if different from default, the target is set
+    bool autoconnect = strcmp(track->config->output.device, "none");
+
+    // Add a device target if specified
     if (track->config->output.device)
     {
-        if (pw_properties_set(props, PW_KEY_TARGET_OBJECT, track->config->output.device) != 0)
+        if (strcmp(track->config->output.device, "default") != 0)
         {
-            log_error("Failed to set target device property");
-            goto cleanup;
+            if (pw_properties_set(props, PW_KEY_TARGET_OBJECT, track->config->output.device) != 0)
+            {
+                log_error("Failed to set target device property");
+                goto cleanup;
+            }
         }
     }
+
+    if(autoconnect == false)
+        pw_properties_set(props, PW_KEY_NODE_AUTOCONNECT, "false");
 
     // Add channel mapping if specified
     if (track->config->output.mapping_count > 0)
