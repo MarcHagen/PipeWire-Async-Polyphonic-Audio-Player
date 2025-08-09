@@ -299,7 +299,7 @@ static bool init_track_pipewire(
     success = true;
 
     cleanup:
-    if (props) {
+    if (!success && props) {
         pw_properties_free(props);
     }
 
