@@ -43,13 +43,14 @@ RUN apt-get update && apt-get install -y \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Create non-root user and runtime directory
-RUN /usr/sbin/useradd --no-create-home -u 1001 papad
-USER papad
+# Create non-root papa and runtime directory
+RUN useradd --create-home --home-dir /home/papa --uid 1001 -s /bin/sh papa \
+  && echo "XDG_RUNTIME_DIR=/run/user/1001; export XDG_RUNTIME_DIR" >> /home/papa/.profile \
+  && mkdir -m 0700 -p /run/user/1001 \
+  && chown -R papa /run/user/1001 /home/papa
 
-# PipeWire runtime dir
-ENV XDG_RUNTIME_DIR=/tmp/xdg
-RUN mkdir -p "$XDG_RUNTIME_DIR"
+USER papa
+ENV XDG_RUNTIME_DIR=/run/user/1001
 
 # Copy built binaries
 COPY --from=builder /src/bin/papad /usr/local/bin/papad

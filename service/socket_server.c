@@ -6,27 +6,29 @@
 #include <sys/un.h>
 #include <pthread.h>
 #include <sys/stat.h>
+#include <limits.h>
+#include <errno.h>
 #include "socket_server.h"
 #include "log.h"
+#ifndef RUNTIME_SUBDIR
+#define RUNTIME_SUBDIR "papa"
+#endif
 
 // Socket command handling
-typedef struct
-{
-    const char* cmd;
-    int (*handler)(track_manager_ctx_t* mgr, const char* arg, char* response, size_t resp_size);
+typedef struct {
+    const char *cmd;
+
+    int (*handler)(track_manager_ctx_t *mgr, const char *arg, char *response, size_t resp_size);
 } command_handler_t;
 
 // Command handlers
-static int handle_play(track_manager_ctx_t* mgr, const char* track_id, char* response, size_t resp_size)
-{
-    if (!track_id || !track_id[0])
-    {
+static int handle_play(track_manager_ctx_t *mgr, const char *track_id, char *response, size_t resp_size) {
+    if (!track_id || !track_id[0]) {
         snprintf(response, resp_size, "ERROR: Missing track ID");
         return -1;
     }
 
-    if (track_manager_play(mgr, track_id))
-    {
+    if (track_manager_play(mgr, track_id)) {
         snprintf(response, resp_size, "OK: Playing track %s", track_id);
         return 0;
     }
@@ -35,16 +37,13 @@ static int handle_play(track_manager_ctx_t* mgr, const char* track_id, char* res
     return -1;
 }
 
-static int handle_stop(track_manager_ctx_t* mgr, const char* track_id, char* response, size_t resp_size)
-{
-    if (!track_id || !track_id[0])
-    {
+static int handle_stop(track_manager_ctx_t *mgr, const char *track_id, char *response, size_t resp_size) {
+    if (!track_id || !track_id[0]) {
         snprintf(response, resp_size, "ERROR: Missing track ID");
         return -1;
     }
 
-    if (track_manager_stop(mgr, track_id))
-    {
+    if (track_manager_stop(mgr, track_id)) {
         snprintf(response, resp_size, "OK: Stopped track %s", track_id);
         return 0;
     }
@@ -53,12 +52,10 @@ static int handle_stop(track_manager_ctx_t* mgr, const char* track_id, char* res
     return -1;
 }
 
-static int handle_stop_all(track_manager_ctx_t* mgr, const char* arg, char* response, size_t resp_size)
-{
-    (void)arg; // Unused
+static int handle_stop_all(track_manager_ctx_t *mgr, const char *arg, char *response, size_t resp_size) {
+    (void) arg; // Unused
 
-    if (track_manager_stop_all(mgr))
-    {
+    if (track_manager_stop_all(mgr)) {
         snprintf(response, resp_size, "OK: Stopped all tracks");
         return 0;
     }
@@ -67,10 +64,9 @@ static int handle_stop_all(track_manager_ctx_t* mgr, const char* arg, char* resp
     return -1;
 }
 
-static int handle_list(track_manager_ctx_t* mgr, const char* arg, char* response, size_t resp_size)
-{
-    (void)arg; // Unused
-    (void)mgr; // Use track manager to get list
+static int handle_list(track_manager_ctx_t *mgr, const char *arg, char *response, size_t resp_size) {
+    (void) arg; // Unused
+    (void) mgr; // Use track manager to get list
 
     // For now, just return a simple message
     // In a full implementation, format a proper list of tracks
@@ -78,10 +74,9 @@ static int handle_list(track_manager_ctx_t* mgr, const char* arg, char* response
     return 0;
 }
 
-static int handle_status(track_manager_ctx_t* mgr, const char* arg, char* response, size_t resp_size)
-{
-    (void)arg; // Unused
-    (void)mgr; // Use track manager to get status
+static int handle_status(track_manager_ctx_t *mgr, const char *arg, char *response, size_t resp_size) {
+    (void) arg; // Unused
+    (void) mgr; // Use track manager to get status
 
     // For now, just return a simple message
     // In a full implementation, format status information
@@ -89,10 +84,9 @@ static int handle_status(track_manager_ctx_t* mgr, const char* arg, char* respon
     return 0;
 }
 
-static int handle_reload(track_manager_ctx_t* mgr, const char* arg, char* response, size_t resp_size)
-{
-    (void)arg; // Unused
-    (void)mgr; // In a full implementation, this would reload the config
+static int handle_reload(track_manager_ctx_t *mgr, const char *arg, char *response, size_t resp_size) {
+    (void) arg; // Unused
+    (void) mgr; // In a full implementation, this would reload the config
 
     // This would trigger a reload signal
     snprintf(response, resp_size, "OK: Reload signal sent");
@@ -101,37 +95,33 @@ static int handle_reload(track_manager_ctx_t* mgr, const char* arg, char* respon
 
 // Command table
 static const command_handler_t COMMANDS[] = {
-    {"play", handle_play},
-    {"stop", handle_stop},
-    {"stop-all", handle_stop_all},
-    {"list", handle_list},
-    {"status", handle_status},
-    {"reload", handle_reload},
-    {NULL, NULL} // Terminator
+        {"play",     handle_play},
+        {"stop",     handle_stop},
+        {"stop-all", handle_stop_all},
+        {"list",     handle_list},
+        {"status",   handle_status},
+        {"reload",   handle_reload},
+        {NULL, NULL} // Terminator
 };
 
 // Process a command string
-static int process_command(const char* cmd_str, track_manager_ctx_t* mgr, char* response, size_t resp_size)
-{
+static int process_command(const char *cmd_str, track_manager_ctx_t *mgr, char *response, size_t resp_size) {
     char cmd_buf[256];
     strncpy(cmd_buf, cmd_str, sizeof(cmd_buf) - 1);
     cmd_buf[sizeof(cmd_buf) - 1] = '\0';
 
     // Split command and argument
-    char* cmd = strtok(cmd_buf, " ");
-    char* arg = strtok(NULL, "");
+    char *cmd = strtok(cmd_buf, " ");
+    char *arg = strtok(NULL, "");
 
-    if (!cmd)
-    {
+    if (!cmd) {
         snprintf(response, resp_size, "ERROR: Empty command");
         return -1;
     }
 
     // Find command handler
-    for (const command_handler_t* handler = COMMANDS; handler->cmd != NULL; handler++)
-    {
-        if (strcmp(handler->cmd, cmd) == 0)
-        {
+    for (const command_handler_t *handler = COMMANDS; handler->cmd != NULL; handler++) {
+        if (strcmp(handler->cmd, cmd) == 0) {
             return handler->handler(mgr, arg, response, resp_size);
         }
     }
@@ -141,25 +131,21 @@ static int process_command(const char* cmd_str, track_manager_ctx_t* mgr, char* 
 }
 
 // Socket server thread function
-static void* socket_server_thread(void* arg)
-{
-    socket_server_ctx_t* ctx = (socket_server_ctx_t*)arg;
+static void *socket_server_thread(void *arg) {
+    socket_server_ctx_t *ctx = (socket_server_ctx_t *) arg;
     char buffer[1024];
     char response[1024];
 
     log_info("Socket server thread started");
 
-    while (ctx->running)
-    {
+    while (ctx->running) {
         // Accept connection
         struct sockaddr_un client_addr;
         socklen_t client_len = sizeof(client_addr);
-        int client_fd = accept(ctx->server_fd, (struct sockaddr*)&client_addr, &client_len);
+        int client_fd = accept(ctx->server_fd, (struct sockaddr *) &client_addr, &client_len);
 
-        if (client_fd < 0)
-        {
-            if (ctx->running)
-            {
+        if (client_fd < 0) {
+            if (ctx->running) {
                 log_error("Socket accept failed");
             }
             continue;
@@ -167,8 +153,7 @@ static void* socket_server_thread(void* arg)
 
         // Read client request
         ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
-        if (bytes_read > 0)
-        {
+        if (bytes_read > 0) {
             buffer[bytes_read] = '\0';
             log_debug("Received command: %s", buffer);
 
@@ -187,36 +172,60 @@ static void* socket_server_thread(void* arg)
 }
 
 // Get the socket path for the current user
-char* get_socket_path(char* buffer, size_t size)
-{
-    if (!buffer || size == 0)
-    {
+char *get_socket_path(char *buffer, size_t size) {
+    if (!buffer || size == 0) {
         return NULL;
     }
 
-    // Ensure the runtime directory exists
-    char dir_path[256];
-    snprintf(dir_path, sizeof(dir_path), "/var/run/user/%d/papa", (int)getuid());
+    const char *xdg = getenv("XDG_RUNTIME_DIR");
+    char dir_path[PATH_MAX];
+
+    if (xdg && xdg[0] != '\0') {
+        // Use XDG_RUNTIME_DIR
+        if (snprintf(dir_path, sizeof(dir_path), "%s/%s", xdg, RUNTIME_SUBDIR) >= (int) sizeof(dir_path)) {
+            return NULL; // path too long
+        }
+    } else {
+        // Fallback to /run/user/<uid>
+        uid_t uid = getuid();
+        if (snprintf(dir_path, sizeof(dir_path), "/run/user/%d/%s", (int) uid, RUNTIME_SUBDIR) >=
+            (int) sizeof(dir_path)) {
+            return NULL;
+        }
+    }
+
+    // Ensure the runtime subdirectory exists with 0700
+    // It's okay if it already exists
+    if (mkdir(dir_path, 0700) < 0 && errno != EEXIST) {
+        return NULL;
+    }
 
     // Construct the socket path
-    snprintf(buffer, size, "%s/papad.sock", dir_path);
+    if (snprintf(buffer, size, "%s/%s", dir_path, "papad.sock") >= (int) size) {
+        return NULL; // path too long for provided buffer
+    }
+
     return buffer;
 }
 
 // Initialize socket server
-socket_server_ctx_t* socket_server_init(track_manager_ctx_t* track_manager)
-{
-    socket_server_ctx_t* ctx = calloc(1, sizeof(socket_server_ctx_t));
-    if (!ctx)
-    {
+socket_server_ctx_t *socket_server_init(track_manager_ctx_t *track_manager) {
+    socket_server_ctx_t *ctx = calloc(1, sizeof(socket_server_ctx_t));
+    if (!ctx) {
         log_error("Failed to allocate socket server context");
         return NULL;
     }
 
     // Get the socket path
-    if (!get_socket_path(ctx->socket_path, sizeof(ctx->socket_path)))
-    {
+    if (!get_socket_path(ctx->socket_path, sizeof(ctx->socket_path))) {
         log_error("Failed to get socket path");
+        free(ctx);
+        return NULL;
+    }
+
+    // Check path fits into sockaddr_un.sun_path
+    if (strlen(ctx->socket_path) >= sizeof(((struct sockaddr_un*)0)->sun_path)) {
+        log_error("Socket path too long for AF_UNIX");
         free(ctx);
         return NULL;
     }
@@ -230,8 +239,7 @@ socket_server_ctx_t* socket_server_init(track_manager_ctx_t* track_manager)
 
     // Create socket
     ctx->server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (ctx->server_fd < 0)
-    {
+    if (ctx->server_fd < 0) {
         log_error("Socket creation failed");
         free(ctx);
         return NULL;
@@ -244,38 +252,38 @@ socket_server_ctx_t* socket_server_init(track_manager_ctx_t* track_manager)
     strncpy(addr.sun_path, ctx->socket_path, sizeof(addr.sun_path) - 1);
 
     // Bind socket
-    if (bind(ctx->server_fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) < 0)
-    {
+    if (bind(ctx->server_fd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) < 0) {
         log_error("Socket bind failed");
         close(ctx->server_fd);
         free(ctx);
         return NULL;
     }
 
+    // Restrictive permissions for the socket file
+    // Use 0600 by default; switch to 0660 if you manage a dedicated group.
+    if (chmod(ctx->socket_path, 0600) < 0) {
+        log_error("Failed to set socket permissions");
+        // Not fatal in many cases, but consider handling according to your policy
+    }
+
     // Listen for connections
-    if (listen(ctx->server_fd, 5) < 0)
-    {
+    if (listen(ctx->server_fd, 5) < 0) {
         log_error("Socket listen failed");
         close(ctx->server_fd);
         free(ctx);
         return NULL;
     }
 
-    // Set socket permissions so other users can connect
-    chmod(ctx->socket_path, 0666);
-
     log_info("Socket server initialized at %s", ctx->socket_path);
     return ctx;
 }
 
 // Start socket server thread
-bool socket_server_start(socket_server_ctx_t* ctx)
-{
+bool socket_server_start(socket_server_ctx_t *ctx) {
     if (!ctx) return false;
 
     ctx->running = true;
-    if (pthread_create(&ctx->thread, NULL, socket_server_thread, ctx) != 0)
-    {
+    if (pthread_create(&ctx->thread, NULL, socket_server_thread, ctx) != 0) {
         log_error("Failed to create socket server thread");
         ctx->running = false;
         return false;
@@ -285,8 +293,7 @@ bool socket_server_start(socket_server_ctx_t* ctx)
 }
 
 // Stop and cleanup socket server
-void socket_server_cleanup(socket_server_ctx_t* ctx)
-{
+void socket_server_cleanup(socket_server_ctx_t *ctx) {
     if (!ctx) return;
 
     // Signal thread to stop
@@ -294,25 +301,22 @@ void socket_server_cleanup(socket_server_ctx_t* ctx)
 
     // Wake up accept() by connecting to the socket
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock >= 0)
-    {
+    if (sock >= 0) {
         struct sockaddr_un addr;
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
         strncpy(addr.sun_path, ctx->socket_path, sizeof(addr.sun_path) - 1);
-        connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+        connect(sock, (struct sockaddr *) &addr, sizeof(addr));
         close(sock);
     }
 
     // Wait for thread to finish
-    if (ctx->thread)
-    {
+    if (ctx->thread) {
         pthread_join(ctx->thread, NULL);
     }
 
     // Close socket and remove file
-    if (ctx->server_fd >= 0)
-    {
+    if (ctx->server_fd >= 0) {
         close(ctx->server_fd);
         ctx->server_fd = -1;
     }

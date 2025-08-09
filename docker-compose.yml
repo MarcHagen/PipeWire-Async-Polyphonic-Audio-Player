@@ -1,0 +1,26 @@
+---
+services:
+  service:
+    image: marchagen/papa:latest
+    container_name: papad
+    restart: unless-stopped
+    volumes:
+      - ./config/default.yml:/app/config.yml:ro
+      - ./config/media:/app/media:ro
+      # If the client communicates with the service via a shared Unix socket, mount the same volume
+      - papad-run:/var/run/user/1001/papa/papad.sock
+
+  client:
+    image: marchagen/papa:latest
+    container_name: papa
+    depends_on:
+      - service
+    # Run the client binary from the same image
+    command: ["/bin/sh"]
+    restart: "no"
+    # If the client communicates with the service via a shared Unix socket, mount the same volume
+    volumes:
+      - papad-run:/var/run/user/1000/papad
+
+volumes:
+  papad-run:
