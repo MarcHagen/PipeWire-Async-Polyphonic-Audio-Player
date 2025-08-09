@@ -76,11 +76,14 @@ static int handle_list(track_manager_ctx_t *mgr, const char *arg, char *response
 
 static int handle_status(track_manager_ctx_t *mgr, const char *arg, char *response, size_t resp_size) {
     (void) arg; // Unused
-    (void) mgr; // Use track manager to get status
+    char* status = track_manager_print_status(mgr);
+    if (!status) {
+        snprintf(response, resp_size, "ERROR: Failed to get status");
+        return -1;
+    }
 
-    // For now, just return a simple message
-    // In a full implementation, format status information
-    snprintf(response, resp_size, "OK: Status not yet implemented");
+    snprintf(response, resp_size, "%s", status);
+    free(status);
     return 0;
 }
 
@@ -89,7 +92,7 @@ static int handle_reload(track_manager_ctx_t *mgr, const char *arg, char *respon
     (void) mgr; // In a full implementation, this would reload the config
 
     // This would trigger a reload signal
-    snprintf(response, resp_size, "OK: Reload signal sent");
+    snprintf(response, resp_size, "OK: Reload signal not yet implemented");
     return 0;
 }
 

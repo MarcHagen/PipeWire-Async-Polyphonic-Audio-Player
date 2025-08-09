@@ -568,15 +568,20 @@ void track_manager_list_tracks(track_manager_ctx_t *ctx) {
     }
 }
 
-void track_manager_print_status(track_manager_ctx_t *ctx) {
-    if (!ctx)
-        return;
+char *track_manager_print_status(track_manager_ctx_t *ctx) {
+    char *status = malloc(4096); // Generous buffer size
+    int offset = 0;
 
-    printf("Active tracks: %d/%d\n", ctx->active_tracks, MAX_TRACKS);
+    if (!ctx) {
+        snprintf(status, 4096, "Track manager not initialized\n");
+        return status;
+    }
+
+    offset += snprintf(status + offset, 4096 - offset, "Active tracks: %d\n", ctx->active_tracks);
+
     for (int i = 0; i < ctx->active_tracks; i++) {
-        const track_instance_t *track = &ctx->tracks[i];
         const char *state_str;
-        switch (track->state) {
+        switch (ctx->tracks[i].state) {
             case TRACK_STATE_PLAYING:
                 state_str = "playing";
                 break;
@@ -596,12 +601,22 @@ void track_manager_print_status(track_manager_ctx_t *ctx) {
                 state_str = "unknown";
                 break;
         }
-        printf("  %s: %s\n", track->config->id, state_str);
-        if (track->config->output.device) {
-            printf("    Device: %s\n", track->config->output.device);
+
+        offset += snprintf(
+            status + offset,
+            4096 - offset,
+            "Track %s: %s (connected: %s)\n",
+            ctx->tracks[i].config->id,
+            state_str,
+            ctx->tracks[i].is_connected ? "yes" : "no"
+        );
+
+        if (ctx->tracks[i].state == TRACK_STATE_ERROR && ctx->tracks[i].error.message) {
+            offset += snprintf(status + offset, 4096 - offset, "  Error: %s\n", ctx->tracks[i].error.message);
         }
-        printf("    Connected: %s\n", track->is_connected ? "yes" : "no");
     }
+
+    return status;
 }
 
 // Test tone configuration

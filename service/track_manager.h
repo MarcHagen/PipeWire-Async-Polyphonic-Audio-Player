@@ -24,7 +24,7 @@ bool track_manager_stop_all(track_manager_ctx_t *ctx);
 // Status functions
 bool track_manager_is_playing(track_manager_ctx_t *ctx, const char *track_id);
 void track_manager_list_tracks(track_manager_ctx_t *ctx);
-void track_manager_print_status(track_manager_ctx_t *ctx);
+char* track_manager_print_status(track_manager_ctx_t *ctx);
 
 // Test tone functionality
 bool track_manager_play_test_tone(track_manager_ctx_t *ctx, const char *channel_mapping);
