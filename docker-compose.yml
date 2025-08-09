@@ -6,7 +6,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./config/default.yml:/app/config.yml:ro
-      - ./config/media:/app/media:ro
+      - ./media:/media:ro
+      - /run/user/1000/pipewire-0:/run/user/1001/pipewire-0
       # If the client communicates with the service via a shared Unix socket, mount the same volume
       - papad-run:/var/run/user/1001/papa
 
