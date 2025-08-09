@@ -46,8 +46,8 @@ RUN apt-get update && apt-get install -y \
 # Create non-root papa and runtime directory
 RUN useradd --create-home --home-dir /home/papa --uid 1001 -s /bin/sh papa \
   && echo "XDG_RUNTIME_DIR=/run/user/1001; export XDG_RUNTIME_DIR" >> /home/papa/.profile \
-  && mkdir -m 0700 -p /run/user/1001 \
-  && chown -R papa /run/user/1001 /home/papa
+  && mkdir -m 0700 -p /run/user/1001/papa \
+  && chown -R papa:papa /run/user/1001 /home/papa
 
 USER papa
 ENV XDG_RUNTIME_DIR=/run/user/1001
