@@ -1,9 +1,9 @@
-FROM ubuntu:22.04
+# Builder stage
+FROM ubuntu:24.04 AS builder
 
-# Prevent interactive prompts during package installation
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Install required packages
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
@@ -11,34 +11,51 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libpipewire-0.3-dev \
     libspa-0.2-dev \
+    libyaml-dev \
+    libsndfile1-dev \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+# Copy build files and sources
+COPY Makefile /src/Makefile
+COPY service/ /src/service/
+COPY client/ /src/client/
+
+# Build optimized binaries for Service (papad) and Client (papa)
+RUN make release
+
+# Runtime stage
+FROM ubuntu:24.04 AS runtime
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y \
     pipewire \
+    libpipewire-0.3-0 \
     libpipewire-0.3-common \
     libspa-0.2-modules \
+    libyaml-0-2 \
+    libsndfile1 \
     --no-install-recommends && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Create a working directory
+# Create non-root user and runtime directory
+RUN /usr/sbin/useradd --no-create-home -u 1001 papad
+USER papad
+
+# PipeWire runtime dir
+ENV XDG_RUNTIME_DIR=/tmp/xdg
+RUN mkdir -p "$XDG_RUNTIME_DIR"
+
+# Copy built binaries
+COPY --from=builder /src/bin/papad /usr/local/bin/papad
+COPY --from=builder /src/bin/papa /usr/local/bin/papa
+
 WORKDIR /app
 
-# Copy the source code and build files
-COPY old/multichannel_player.c /app/
-COPY Makefile /app/
-
-# Show the modified Makefile for debugging
-RUN cat Makefile
-
-# Build the application
-RUN make
-
-# Create a non-root user to run the application
-RUN useradd -m appuser
-USER appuser
-
-# Set up environment variables for PipeWire
-ENV XDG_RUNTIME_DIR=/tmp
-
-USER appuser
-
-# Default command to run the player with test tone
-CMD ["/app/multichannel_player", "-t"]
+# Default: run the service
+CMD ["papad"]
