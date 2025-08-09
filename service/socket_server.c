@@ -179,29 +179,71 @@ char *get_socket_path(char *buffer, size_t size) {
 
     const char *xdg = getenv("XDG_RUNTIME_DIR");
     char dir_path[PATH_MAX];
+    bool usable = false;
 
+    // Prefer XDG_RUNTIME_DIR, otherwise /run/user/<uid>
     if (xdg && xdg[0] != '\0') {
-        // Use XDG_RUNTIME_DIR
-        if (snprintf(dir_path, sizeof(dir_path), "%s/%s", xdg, RUNTIME_SUBDIR) >= (int) sizeof(dir_path)) {
+        if (snprintf(dir_path, sizeof(dir_path), "%s/%s", xdg, RUNTIME_SUBDIR) >= (int)sizeof(dir_path)) {
             return NULL; // path too long
         }
     } else {
-        // Fallback to /run/user/<uid>
         uid_t uid = getuid();
-        if (snprintf(dir_path, sizeof(dir_path), "/run/user/%d/%s", (int) uid, RUNTIME_SUBDIR) >=
-            (int) sizeof(dir_path)) {
-            return NULL;
+        if (snprintf(dir_path, sizeof(dir_path), "/run/user/%d/%s", (int)uid, RUNTIME_SUBDIR) >= (int)sizeof(dir_path)) {
+            return NULL; // path too long
         }
     }
 
-    // Ensure the runtime subdirectory exists with 0700
-    // It's okay if it already exists
-    if (mkdir(dir_path, 0700) < 0 && errno != EEXIST) {
-        return NULL;
+    // Ensure the runtime subdirectory exists with 0700 and is writable
+    if (mkdir(dir_path, 0700) == 0) {
+        usable = true;
+    } else if (errno == EEXIST) {
+        struct stat st;
+        if (stat(dir_path, &st) == 0 && S_ISDIR(st.st_mode) && access(dir_path, W_OK | X_OK) == 0) {
+            usable = true;
+        } else {
+            log_warn("Runtime dir not writable: %s; will fall back to /tmp", dir_path);
+        }
+    } else {
+        log_warn("Failed to create runtime dir %s (errno=%d); will fall back to /tmp", dir_path, errno);
+    }
+
+    // Fall back to /tmp/<subdir>-<uid>, then mkdtemp if necessary
+    if (!usable) {
+        uid_t uid = getuid();
+        if (snprintf(dir_path, sizeof(dir_path), "/tmp/%s-%d", RUNTIME_SUBDIR, (int)uid) >= (int)sizeof(dir_path)) {
+            return NULL;
+        }
+        if (mkdir(dir_path, 0700) < 0 && errno != EEXIST) {
+            char tmpl[PATH_MAX];
+            if (snprintf(tmpl, sizeof(tmpl), "/tmp/%s-%d-XXXXXX", RUNTIME_SUBDIR, (int)uid) >= (int)sizeof(tmpl)) {
+                return NULL;
+            }
+            if (!mkdtemp(tmpl)) {
+                log_error("Failed to create fallback temp dir for socket");
+                return NULL;
+            }
+            strncpy(dir_path, tmpl, sizeof(dir_path) - 1);
+            dir_path[sizeof(dir_path) - 1] = '\0';
+        } else {
+            // If exists, ensure it's writable; otherwise try mkdtemp
+            if (access(dir_path, W_OK | X_OK) != 0) {
+                char tmpl[PATH_MAX];
+                if (snprintf(tmpl, sizeof(tmpl), "/tmp/%s-%d-XXXXXX", RUNTIME_SUBDIR, (int)uid) >= (int)sizeof(tmpl)) {
+                    return NULL;
+                }
+                if (!mkdtemp(tmpl)) {
+                    log_error("Failed to create fallback temp dir for socket");
+                    return NULL;
+                }
+                strncpy(dir_path, tmpl, sizeof(dir_path) - 1);
+                dir_path[sizeof(dir_path) - 1] = '\0';
+            }
+        }
+        log_info("Using fallback runtime dir for socket: %s", dir_path);
     }
 
     // Construct the socket path
-    if (snprintf(buffer, size, "%s/%s", dir_path, "papad.sock") >= (int) size) {
+    if (snprintf(buffer, size, "%s/%s", dir_path, "papad.sock") >= (int)size) {
         return NULL; // path too long for provided buffer
     }
 
