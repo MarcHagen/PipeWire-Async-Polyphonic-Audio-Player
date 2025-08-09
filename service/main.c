@@ -44,6 +44,7 @@ static const char* CONFIG_PATHS[] = {
     "./config/default.yml",
     "./default.yml",
     "/etc/papa/config.yml",
+    "/app/config.yml",
     NULL
 };
 
