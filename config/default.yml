@@ -7,13 +7,17 @@ logging:
 # Example tracks configuration
 tracks:
   - id: "test1"
-    file_path: "/tmp/test.wav"
+    file_path: "./media/bgm-demonic-appearance-6ch.wav"
     loop: false
     output:
 #      device: "usb-interface-sink"
       mapping:
         - "AUX0"
         - "AUX1"
+        - "AUX2"
+        - "AUX3"
+        - "AUX4"
+        - "AUX5"
     volume: 1.0
 
   - id: "test2"
