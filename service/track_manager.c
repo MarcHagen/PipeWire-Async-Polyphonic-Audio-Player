@@ -384,8 +384,7 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
     track->error.code = 0;
 
     // Open audio file
-    track->audio_file =
-            audio_file_open(config->file_path, config->loop, config->volume);
+    track->audio_file = audio_file_open(config->file_path, config->loop, config->volume);
     if (!track->audio_file) {
         log_error("Failed to open audio file: %s", config->file_path);
         return false;
@@ -557,6 +556,7 @@ char *track_manager_print_status(track_manager_ctx_t *ctx) {
 
     for (int i = 0; i < ctx->active_tracks; i++) {
         const char *state_str;
+        track_instance_t *track = &ctx->tracks[i];
         switch (ctx->tracks[i].state) {
             case TRACK_STATE_PLAYING:
                 state_str = "playing";
@@ -565,7 +565,7 @@ char *track_manager_print_status(track_manager_ctx_t *ctx) {
                 state_str = "stopped";
                 break;
             case TRACK_STATE_ERROR:
-                state_str = ctx->tracks[i].error.message ? ctx->tracks[i].error.message : "error";
+                state_str = track.error.message ? track.error.message : "error";
                 break;
             case TRACK_STATE_CONNECTING:
                 state_str = "connecting";
