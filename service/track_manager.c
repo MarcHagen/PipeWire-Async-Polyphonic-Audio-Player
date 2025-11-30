@@ -119,8 +119,10 @@ static void on_process(void *userdata) {
     if (frames_read < n_frames) {
         if (!track->audio_file->loop) {
             // End of file reached and not looping
-            track->state = TRACK_STATE_STOPPED;
-            log_info("Track finished: %s", track->config->id);
+            if (track->state != TRACK_STATE_STOPPED) {
+                log_info("Track finished: %s", track->config->id);
+                track->state = TRACK_STATE_STOPPED;
+            }
         }
         // Fill remaining buffer with silence
         memset(
@@ -361,9 +363,20 @@ bool track_manager_play(track_manager_ctx_t *ctx, const char *track_id) {
         return false;
     }
 
-    // Check if track is already playing
+    // Check if track is already active
     for (int i = 0; i < ctx->active_tracks; i++) {
         if (strcmp(ctx->tracks[i].config->id, track_id) == 0) {
+            track_instance_t *track = &ctx->tracks[i];
+
+            // If track is stopped (finished), restart it
+            if (track->state == TRACK_STATE_STOPPED && track->audio_file) {
+                audio_file_seek(track->audio_file, 0);
+                track->state = TRACK_STATE_PLAYING;
+                log_info("Restarting track: %s", track_id);
+                return true;
+            }
+
+            // Otherwise it's already playing
             log_info("Track already playing: %s", track_id);
             return true;
         }
