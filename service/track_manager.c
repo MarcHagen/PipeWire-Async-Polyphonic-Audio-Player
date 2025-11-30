@@ -565,7 +565,7 @@ char *track_manager_print_status(track_manager_ctx_t *ctx) {
                 state_str = "stopped";
                 break;
             case TRACK_STATE_ERROR:
-                state_str = track.error.message ? track.error.message : "error";
+                state_str = track->error.message ? track->error.message : "error";
                 break;
             case TRACK_STATE_CONNECTING:
                 state_str = "connecting";
@@ -829,4 +829,12 @@ bool track_manager_play_test_tone(track_manager_ctx_t *ctx, const char *channel_
 
     pw_properties_free(props);
     return true;
+}
+
+void track_manager_process_events(track_manager_ctx_t *ctx) {
+    if (!ctx || !ctx->pw_loop)
+        return;
+
+    // Iterate the PipeWire main loop once with no timeout (non-blocking)
+    pw_loop_iterate(pw_main_loop_get_loop(ctx->pw_loop), 0);
 }

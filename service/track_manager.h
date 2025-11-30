@@ -29,4 +29,7 @@ char* track_manager_print_status(track_manager_ctx_t *ctx);
 // Test tone functionality
 bool track_manager_play_test_tone(track_manager_ctx_t *ctx, const char *channel_mapping);
 
+// Process pending events (must be called regularly)
+void track_manager_process_events(track_manager_ctx_t *ctx);
+
 #endif // ASYNC_AUDIO_PLAYER_TRACK_MANAGER_H

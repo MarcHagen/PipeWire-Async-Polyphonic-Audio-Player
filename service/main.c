@@ -217,6 +217,10 @@ int main(const int argc, char *argv[]) {
 
             case SIGNAL_NONE:
             default:
+                // Process PipeWire events
+                if (g_track_manager) {
+                    track_manager_process_events(g_track_manager);
+                }
                 usleep(100000); // 100 ms sleep to prevent heavy loop
                 break;
         }
