@@ -565,7 +565,7 @@ char *track_manager_print_status(track_manager_ctx_t *ctx) {
                 state_str = "stopped";
                 break;
             case TRACK_STATE_ERROR:
-                state_str = track->error.message ? track->error.message : "error";
+                state_str = ctx->tracks[i].error.message ? ctx->tracks[i].error.message : "error";
                 break;
             case TRACK_STATE_CONNECTING:
                 state_str = "connecting";
